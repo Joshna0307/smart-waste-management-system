@@ -2,10 +2,9 @@ FROM dunglas/frankenphp:1-php8.3
 
 WORKDIR /app/public
 
-# Enable the MySQL PDO driver used by the project.
-RUN install-php-extensions pdo_mysql
+# Enable PDO PostgreSQL for Neon.
+RUN install-php-extensions pdo_pgsql
 
 COPY . /app/public
 
-# Vercel supplies PORT at runtime. FrankenPHP listens on that port.
 CMD ["sh", "-c", "frankenphp php-server --root /app/public --listen 0.0.0.0:${PORT:-8080}"]

@@ -36,6 +36,17 @@ CREATE TABLE IF NOT EXISTS craft_sales (
   expense_amount NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (expense_amount >= 0),
   sold_on DATE NOT NULL, notes TEXT
 );
+CREATE TABLE IF NOT EXISTS collection_requests (
+  id BIGSERIAL PRIMARY KEY,
+  location_id BIGINT NOT NULL REFERENCES campus_locations(id),
+  requested_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  waste_category VARCHAR(30) NOT NULL CHECK (waste_category IN ('biodegradable','recyclable','reusable','craft','residual','e_waste')),
+  quantity_kg NUMERIC(10,2) NOT NULL CHECK (quantity_kg > 0),
+  notes TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','in_progress','collected','rejected')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 -- Campus locations; repeated setup does not create duplicates.
 INSERT INTO campus_locations (location_code, location_name, location_type, map_x, map_y, is_high_priority) VALUES
 ('B01','Administrative Block','block',50,20,FALSE),('B02','Gino Block','block',42,35,FALSE),

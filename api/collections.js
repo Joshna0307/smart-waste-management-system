@@ -41,16 +41,16 @@ export default async function handler(req,res) {
           l.location_name,COALESCE(requester.name,'Former user') AS requester_name,
           COALESCE((
             SELECT json_agg(json_build_object(
-              'id',event.id,
-              'from_status',event.from_status,
-              'to_status',event.to_status,
-              'note',event.note,
-              'created_at',event.created_at,
+              'id',ev.id,
+              'from_status',ev.from_status,
+              'to_status',ev.to_status,
+              'note',ev.note,
+              'created_at',ev.created_at,
               'changed_by_name',COALESCE(actor.name,'Former user')
-            ) ORDER BY event.created_at,event.id)
-            FROM collection_request_events event
-            LEFT JOIN users actor ON actor.id=event.changed_by
-            WHERE event.request_id=c.id
+            ) ORDER BY ev.created_at,ev.id)
+            FROM collection_request_events ev
+            LEFT JOIN users actor ON actor.id=ev.changed_by
+            WHERE ev.request_id=c.id
           ),'[]'::json) AS history
         FROM collection_requests c
         JOIN campus_locations l ON l.id=c.location_id

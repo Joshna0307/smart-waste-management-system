@@ -13,3 +13,57 @@ $("#wasteForm").addEventListener("submit",async e=>{e.preventDefault();const for
 async function loadCollections(){try{const data=await api("/api/collections");const body=$("#collectionRows");if(!data.requests.length){body.innerHTML='<tr><td colspan="5">No collection requests yet.</td></tr>';return}body.innerHTML=data.requests.map(r=>{const opts=["pending","approved","in_progress","collected","rejected"];const action=currentUser&&currentUser.role==="admin"?'<select class="request-status" data-id="'+r.id+'">'+opts.map(s=>'<option value="'+s+'" '+(s===r.status?'selected':'')+'>'+s.replace("_"," ")+'</option>').join("")+'</select>':'—';return '<tr><td>'+escapeHtml(r.location_name)+'</td><td>'+escapeHtml(r.waste_category)+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td><span class="request-pill '+r.status+'">'+r.status.replace("_"," ")+'</span></td><td>'+action+'</td></tr>'}).join("");body.querySelectorAll(".request-status").forEach(sel=>sel.addEventListener("change",async()=>{try{await api("/api/collections",{method:"PATCH",body:JSON.stringify({id:sel.dataset.id,status:sel.value})});await loadCollections()}catch(e){$("#collectionMsg").textContent=e.message}}))}catch(e){$("#collectionRows").innerHTML='<tr><td colspan="5">'+escapeHtml(e.message)+'</td></tr>'}}
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 $("#collectionForm").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));$("#collectionMsg").textContent="Submitting request…";try{await api("/api/collections",{method:"POST",body:JSON.stringify(f)});$("#collectionMsg").textContent="Collection request submitted.";e.currentTarget.reset();await loadCollections()}catch(x){$("#collectionMsg").textContent=x.message}});
+
+
+// Camera-based waste item detection (COCO-SSD runs in the browser).
+let wasteStream=null,wasteDetector=null;
+const cameraVideo=$("#wasteCamera"),cameraCanvas=$("#wasteCanvas");
+$("#startCamera").addEventListener("click",async()=>{
+ const status=$("#cameraMsg");status.textContent="Starting camera…";
+ try{
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error("Camera access is unavailable. Open this site over HTTPS in a supported browser.");
+  wasteStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+  cameraVideo.srcObject=wasteStream;await cameraVideo.play();
+  $("#startCamera").disabled=true;$("#detectWaste").disabled=false;$("#stopCamera").disabled=false;
+  status.textContent="Camera ready. Place one waste item clearly in view.";
+ }catch(e){status.textContent=e.message||"Could not start camera. Please allow camera permission."}
+});
+$("#stopCamera").addEventListener("click",()=>{
+ if(wasteStream)wasteStream.getTracks().forEach(t=>t.stop());wasteStream=null;cameraVideo.srcObject=null;
+ $("#startCamera").disabled=false;$("#detectWaste").disabled=true;$("#stopCamera").disabled=true;
+ $("#cameraMsg").textContent="Camera stopped.";
+});
+$("#detectWaste").addEventListener("click",async()=>{
+ const status=$("#cameraMsg"),result=$("#cameraResult"),button=$("#detectWaste");
+ if(!cameraVideo.videoWidth){status.textContent="Wait for the camera preview to appear.";return}
+ button.disabled=true;status.textContent="Loading detection model…";
+ try{
+  if(!window.cocoSsd)throw new Error("Detection model did not load. Check your internet connection and refresh.");
+  if(!wasteDetector)wasteDetector=await cocoSsd.load({base:"lite_mobilenet_v2"});
+  const ctx=cameraCanvas.getContext("2d");
+  cameraCanvas.width=cameraVideo.videoWidth;cameraCanvas.height=cameraVideo.videoHeight;
+  ctx.drawImage(cameraVideo,0,0,cameraCanvas.width,cameraCanvas.height);
+  const predictions=await wasteDetector.detect(cameraCanvas,10,0.45);
+  const found=predictions.sort((a,b)=>b.score-a.score)[0];
+  const file=await new Promise(resolve=>cameraCanvas.toBlob(blob=>resolve(blob),"image/jpeg",0.82));
+  if(file){
+   const photo=new File([file],"camera-waste-"+Date.now()+".jpg",{type:"image/jpeg"});
+   const transfer=new DataTransfer();transfer.items.add(photo);$("#wasteImage").files=transfer.files;
+  }
+  if(!found){
+   result.classList.remove("hidden");result.textContent="No clear item detected. Try moving closer with better lighting, or select the category manually.";
+   status.textContent="No object detected.";return;
+  }
+  const label=found.class;
+  const food=["banana","apple","orange","broccoli","carrot","sandwich","pizza","donut","cake"];
+  const recyclable=["bottle","cup","wine glass"];
+  let category="residual",explanation="This object is not confidently mapped to a waste category. Please choose manually.";
+  if(food.includes(label)){category="biodegradable";explanation="Food item detected. Suggested: biodegradable / food waste."}
+  else if(recyclable.includes(label)){category="recyclable";explanation="Bottle, cup or glass item detected. Suggested: recyclable (check local material rules)."}
+  $("#wasteForm select[name=waste_category]").value=category;
+  result.classList.remove("hidden");
+  result.innerHTML="<strong>Detected:</strong> "+escapeHtml(label)+" ("+(found.score*100).toFixed(0)+"% confidence)<br><strong>Suggestion:</strong> "+escapeHtml(category.replace("_"," "))+"<br><span>"+escapeHtml(explanation)+"</span><br><small>Captured photo attached to the waste report. Please verify the suggestion before saving.</small>";
+  status.textContent="Detection complete. Review the suggested category.";
+ }catch(e){status.textContent=e.message||"Detection failed."}
+ finally{button.disabled=false}
+});

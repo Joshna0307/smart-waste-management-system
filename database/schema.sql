@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS waste_records (
   quantity_kg NUMERIC(10,2) NOT NULL CHECK (quantity_kg >= 0),
   collection_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (collection_status IN ('pending','collected','stored','processed','transferred')),
   notes TEXT, recorded_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  image_data BYTEA, image_mime VARCHAR(40), image_name VARCHAR(255),
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS partners (

@@ -20,6 +20,20 @@ CREATE TABLE IF NOT EXISTS waste_records (
   image_data BYTEA, image_mime VARCHAR(40), image_name VARCHAR(255),
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS collection_request_events (
+  id BIGSERIAL PRIMARY KEY,
+  request_id BIGINT NOT NULL REFERENCES collection_requests(id) ON DELETE CASCADE,
+  changed_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  from_status VARCHAR(20) CHECK (from_status IS NULL OR from_status IN ('pending','approved','in_progress','collected','rejected')),
+  to_status VARCHAR(20) NOT NULL CHECK (to_status IN ('pending','approved','in_progress','collected','rejected')),
+  note VARCHAR(500),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_collection_requests_owner_created
+  ON collection_requests(requested_by, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_collection_request_events_request_created
+  ON collection_request_events(request_id, created_at, id);
+
 CREATE TABLE IF NOT EXISTS partners (
   id BIGSERIAL PRIMARY KEY, partner_name VARCHAR(150) NOT NULL,
   partner_type VARCHAR(30) NOT NULL CHECK (partner_type IN ('recycling_company','reuse_center','municipal_service','composting_unit','other')),

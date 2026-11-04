@@ -10,7 +10,7 @@ if ($name === '' || !$email || strlen($password) < 8) {
     header('Location: ../register.php'); exit;
 }
 try {
-    $stmt = $pdo->prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, "user")');
+    $stmt = $pdo->prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'user')');
     $stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT)]);
     header('Location: ../index.php'); exit;
 } catch (PDOException $e) {

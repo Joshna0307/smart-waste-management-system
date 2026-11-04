@@ -10,9 +10,57 @@ function renderCampusMap(locations){const group=$("#mapMarkers");if(!group)retur
 function renderRecords(rows){$("#count").textContent=rows.length;$("#kg").textContent=rows.reduce((a,r)=>a+Number(r.quantity_kg),0).toFixed(2);$("#records").innerHTML=rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.location_name)+'</td><td>'+escapeHtml(r.waste_category)+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td>'+escapeHtml(r.collection_status)+'</td><td>'+(r.has_image?'<a href="/api/report-image?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">View image</a>':'—')+'</td><td>'+new Date(r.recorded_at).toLocaleString()+'</td></tr>').join(""):'<tr><td colspan="6">No waste records yet.</td></tr>'}
 $("#wasteForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=Object.fromEntries(new FormData(form));const file=$("#wasteImage")?.files?.[0];delete f.image;$("#wasteMsg").textContent="Saving report…";try{if(file){if(file.size>2*1024*1024)throw new Error("Image must be 2 MB or smaller.");f.image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read image."));reader.readAsDataURL(file)});f.image_name=file.name}await api("/api/waste",{method:"POST",body:JSON.stringify(f)});$("#wasteMsg").textContent="Waste report and image saved to the cloud.";form.reset();const r=await api("/api/waste");renderRecords(r.records)}catch(x){$("#wasteMsg").textContent=x.message}});
 (async()=>{try{const r=await api("/api/auth/me");await enter(r.user)}catch{}})();
-async function loadCollections(){try{const data=await api("/api/collections");const body=$("#collectionRows");if(!data.requests.length){body.innerHTML='<tr><td colspan="5">No collection requests yet.</td></tr>';return}body.innerHTML=data.requests.map(r=>{const opts=["pending","approved","in_progress","collected","rejected"];const action=currentUser&&currentUser.role==="admin"?'<select class="request-status" data-id="'+r.id+'">'+opts.map(s=>'<option value="'+s+'" '+(s===r.status?'selected':'')+'>'+s.replace("_"," ")+'</option>').join("")+'</select>':'—';return '<tr><td>'+escapeHtml(r.location_name)+'</td><td>'+escapeHtml(r.waste_category)+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td><span class="request-pill '+r.status+'">'+r.status.replace("_"," ")+'</span></td><td>'+action+'</td></tr>'}).join("");body.querySelectorAll(".request-status").forEach(sel=>sel.addEventListener("change",async()=>{try{await api("/api/collections",{method:"PATCH",body:JSON.stringify({id:sel.dataset.id,status:sel.value})});await loadCollections()}catch(e){$("#collectionMsg").textContent=e.message}}))}catch(e){$("#collectionRows").innerHTML='<tr><td colspan="5">'+escapeHtml(e.message)+'</td></tr>'}}
+async function loadCollections(){
+ try{
+  const data=await api("/api/collections");
+  const body=$("#collectionRows");
+  if(!data.requests.length){body.innerHTML='<tr><td colspan="6">No collection requests yet.</td></tr>';return}
+  const options=["pending","approved","in_progress","collected","rejected"];
+  body.innerHTML=data.requests.map(r=>{
+   const events=Array.isArray(r.history)?r.history:[];
+   const history=events.length
+    ?'<details class="request-history"><summary>View history ('+events.length+')</summary><ol>'+events.map(event=>{
+      const from=event.from_status?event.from_status.replace(/_/g," "):"submitted";
+      const to=String(event.to_status||"").replace(/_/g," ");
+      const when=new Date(event.created_at).toLocaleString();
+      return '<li><b>'+escapeHtml(from)+' → '+escapeHtml(to)+'</b><small>'+escapeHtml(when)+' · '+escapeHtml(event.changed_by_name||"System")+'</small>'+(event.note?'<p>'+escapeHtml(event.note)+'</p>':'')+'</li>';
+     }).join("")+'</ol></details>'
+    :'<span class="muted">No history</span>';
+   const action=currentUser&&currentUser.role==="admin"
+    ?'<select class="request-status" data-id="'+escapeHtml(r.id)+'" data-current="'+escapeHtml(r.status)+'" aria-label="Update request status">'+options.map(s=>'<option value="'+s+'" '+(s===r.status?'selected':'')+'>'+s.replace(/_/g," ")+'</option>').join("")+'</select>'
+    :'Admin only';
+   return '<tr><td>'+escapeHtml(r.location_name)+'</td><td>'+escapeHtml(r.waste_category)+(r.notes?'<small class="request-note">'+escapeHtml(r.notes)+'</small>':'')+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td><span class="request-pill '+escapeHtml(r.status)+'">'+escapeHtml(String(r.status).replace(/_/g," "))+'</span></td><td>'+new Date(r.created_at).toLocaleString()+'</td><td>'+history+'</td><td>'+action+'</td></tr>';
+  }).join("");
+  body.querySelectorAll(".request-status").forEach(select=>select.addEventListener("change",async()=>{
+   const previous=select.dataset.current;
+   select.disabled=true;
+   $("#collectionMsg").textContent="Updating request…";
+   try{
+    await api("/api/collections",{method:"PATCH",body:JSON.stringify({id:select.dataset.id,status:select.value})});
+    $("#collectionMsg").textContent="Status updated and added to request history.";
+    await loadCollections();
+   }catch(error){
+    select.value=previous;
+    $("#collectionMsg").textContent=error.message;
+   }finally{select.disabled=false}
+  }));
+ }catch(error){$("#collectionRows").innerHTML='<tr><td colspan="6">'+escapeHtml(error.message)+'</td></tr>'}
+}
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-$("#collectionForm").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));$("#collectionMsg").textContent="Submitting request…";try{await api("/api/collections",{method:"POST",body:JSON.stringify(f)});$("#collectionMsg").textContent="Collection request submitted.";e.currentTarget.reset();await loadCollections()}catch(x){$("#collectionMsg").textContent=x.message}});
+$("#collectionForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const form=e.currentTarget,button=form.querySelector("button");
+ const values=Object.fromEntries(new FormData(form));
+ button.disabled=true;
+ $("#collectionMsg").textContent="Submitting request…";
+ try{
+  await api("/api/collections",{method:"POST",body:JSON.stringify(values)});
+  form.reset();
+  await loadCollections();
+  $("#collectionMsg").textContent="Collection request submitted. Its status history is now available below.";
+ }catch(error){$("#collectionMsg").textContent=error.message}
+ finally{button.disabled=false}
+});
 
 
 // Camera-based waste item detection (COCO-SSD runs in the browser).

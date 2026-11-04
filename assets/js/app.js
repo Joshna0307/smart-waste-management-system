@@ -14,7 +14,7 @@ async function loadCollections(){
  try{
   const data=await api("/api/collections");
   const body=$("#collectionRows");
-  if(!data.requests.length){body.innerHTML='<tr><td colspan="6">No collection requests yet.</td></tr>';return}
+  if(!data.requests.length){body.innerHTML='<tr><td colspan="7">No collection requests yet.</td></tr>';return}
   const options=["pending","approved","in_progress","collected","rejected"];
   body.innerHTML=data.requests.map(r=>{
    const events=Array.isArray(r.history)?r.history:[];
@@ -44,7 +44,7 @@ async function loadCollections(){
     $("#collectionMsg").textContent=error.message;
    }finally{select.disabled=false}
   }));
- }catch(error){$("#collectionRows").innerHTML='<tr><td colspan="6">'+escapeHtml(error.message)+'</td></tr>'}
+ }catch(error){$("#collectionRows").innerHTML='<tr><td colspan="7">'+escapeHtml(error.message)+'</td></tr>'}
 }
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 $("#collectionForm").addEventListener("submit",async e=>{

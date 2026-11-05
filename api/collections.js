@@ -1,16 +1,15 @@
 import jwt from "jsonwebtoken";
 import { db, send } from "./db.js";
 
-const CATEGORIES = ["biodegradable","recyclable","reusable","craft","residual","e_waste"];
-const STATUSES = ["pending","approved","in_progress","collected","rejected"];
+const STATUSES = ["pending","assigned","in_progress","collected","stored","processed","transferred","rejected","approved"];
 
 async function getUser(req) {
   const token=(req.headers.cookie||"").split(";").map(x=>x.trim()).find(x=>x.startsWith("joy_session="))?.slice(12);
-  if(!token) return null;
+  if(!token || !process.env.JWT_SECRET) return null;
   try {
     const payload=jwt.verify(token,process.env.JWT_SECRET);
     if(!payload?.id) return null;
-    // Read the current role from PostgreSQL so a stale JWT cannot retain admin access.
+    // Always read the current role from PostgreSQL; never trust a stale JWT role.
     const result=await db().query("SELECT id,name,role FROM users WHERE id=$1",[payload.id]);
     return result.rows[0] || null;
   } catch { return null; }
@@ -21,11 +20,10 @@ function validId(value) {
   return /^[1-9][0-9]{0,17}$/.test(id) ? id : null;
 }
 
-function validQuantity(value) {
-  const raw=String(value ?? "").trim();
-  if(!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(raw)) return null;
-  const quantity=Number(raw);
-  return Number.isFinite(quantity) && quantity>0 && quantity<=100000 ? quantity : null;
+function recordStatusForRequest(status) {
+  if(status==="approved") return "assigned"; // legacy request status
+  if(status==="rejected") return "pending";
+  return status;
 }
 
 export default async function handler(req,res) {
@@ -36,60 +34,100 @@ export default async function handler(req,res) {
   try {
     if(req.method==="GET") {
       const isAdmin=u.role==="admin";
-      const result=await db().query(`
-        SELECT c.id,c.waste_category,c.quantity_kg,c.notes,c.status,c.created_at,c.updated_at,
-          l.location_name,COALESCE(requester.name,'Former user') AS requester_name,
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id',ev.id,
-              'from_status',ev.from_status,
-              'to_status',ev.to_status,
-              'note',ev.note,
-              'created_at',ev.created_at,
-              'changed_by_name',COALESCE(actor.name,'Former user')
-            ) ORDER BY ev.created_at,ev.id)
-            FROM collection_request_events ev
-            LEFT JOIN users actor ON actor.id=ev.changed_by
-            WHERE ev.request_id=c.id
-          ),'[]'::json) AS history
-        FROM collection_requests c
-        JOIN campus_locations l ON l.id=c.location_id
-        LEFT JOIN users requester ON requester.id=c.requested_by
-        WHERE ($1::boolean OR c.requested_by=$2)
-        ORDER BY c.created_at DESC,c.id DESC
-        LIMIT 300
-      `,[isAdmin,u.id]);
-      return send(res,200,{requests:result.rows});
+      const [requests,availableRecords]=await Promise.all([
+        db().query(`
+          SELECT c.id,c.waste_record_id,c.waste_category,c.quantity_kg,c.notes,c.status,c.created_at,c.updated_at,
+            l.location_name,COALESCE(requester.name,'Former user') AS requester_name,
+            COALESCE((
+              SELECT json_agg(json_build_object(
+                'id',ev.id,
+                'from_status',ev.from_status,
+                'to_status',ev.to_status,
+                'note',ev.note,
+                'created_at',ev.created_at,
+                'changed_by_name',COALESCE(actor.name,'Former user')
+              ) ORDER BY ev.created_at,ev.id)
+              FROM collection_request_events ev
+              LEFT JOIN users actor ON actor.id=ev.changed_by
+              WHERE ev.request_id=c.id
+            ),'[]'::json) AS history
+          FROM collection_requests c
+          JOIN campus_locations l ON l.id=c.location_id
+          LEFT JOIN users requester ON requester.id=c.requested_by
+          WHERE ($1::boolean OR c.requested_by=$2)
+          ORDER BY c.created_at DESC,c.id DESC
+          LIMIT 300
+        `,[isAdmin,u.id]),
+        db().query(`
+          SELECT w.id,w.location_id,w.waste_category,w.quantity_kg,w.collection_status,w.recorded_at,
+            l.location_name
+          FROM waste_records w
+          JOIN campus_locations l ON l.id=w.location_id
+          WHERE ($1::boolean OR w.recorded_by=$2)
+            AND w.collection_status='pending'
+            AND NOT EXISTS (
+              SELECT 1 FROM collection_requests c
+              WHERE c.waste_record_id=w.id
+                AND c.status NOT IN ('collected','stored','processed','transferred','rejected')
+            )
+          ORDER BY w.recorded_at DESC,w.id DESC
+          LIMIT 200
+        `,[isAdmin,u.id])
+      ]);
+      return send(res,200,{requests:requests.rows,available_records:availableRecords.rows});
     }
 
     if(req.method==="POST") {
       const body=req.body||{};
-      const locationId=validId(body.location_id);
-      const quantity=validQuantity(body.quantity_kg);
-      const category=String(body.waste_category||"");
+      const wasteRecordId=validId(body.waste_record_id);
       const notes=body.notes==null ? null : (typeof body.notes==="string" ? body.notes.trim() : null);
-      if(!locationId || !CATEGORIES.includes(category) || quantity===null || (body.notes!=null && typeof body.notes!=="string") || (notes&&notes.length>1000)) {
-        return send(res,400,{error:"Choose a valid campus location and waste type, enter a quantity from 0.01 to 100000 kg (up to 2 decimals), and keep notes under 1000 characters."});
+      if(!wasteRecordId || (body.notes!=null && typeof body.notes!=="string") || (notes&&notes.length>1000)) {
+        return send(res,400,{error:"Choose a pending waste record and keep pickup notes under 1000 characters."});
       }
-      const location=await db().query("SELECT id FROM campus_locations WHERE id=$1",[locationId]);
-      if(!location.rowCount) return send(res,400,{error:"That campus location does not exist."});
 
       const client=await db().connect();
       try {
         await client.query("BEGIN");
+        const recordResult=await client.query(
+          "SELECT id,location_id,waste_category,quantity_kg,collection_status,recorded_by FROM waste_records WHERE id=$1 FOR UPDATE",
+          [wasteRecordId]
+        );
+        if(!recordResult.rowCount) {
+          await client.query("ROLLBACK");
+          return send(res,404,{error:"Waste record not found."});
+        }
+        const record=recordResult.rows[0];
+        if(u.role!=="admin" && String(record.recorded_by)!==String(u.id)) {
+          await client.query("ROLLBACK");
+          return send(res,404,{error:"Waste record not found."});
+        }
+        if(record.collection_status!=="pending") {
+          await client.query("ROLLBACK");
+          return send(res,409,{error:"This waste record is no longer waiting for collection."});
+        }
+        const active=await client.query(
+          "SELECT id FROM collection_requests WHERE waste_record_id=$1 AND status NOT IN ('collected','stored','processed','transferred','rejected') LIMIT 1",
+          [wasteRecordId]
+        );
+        if(active.rowCount) {
+          await client.query("ROLLBACK");
+          return send(res,409,{error:"A collection request is already active for this waste record."});
+        }
+
         const inserted=await client.query(
-          "INSERT INTO collection_requests(location_id,requested_by,waste_category,quantity_kg,notes) VALUES($1,$2,$3,$4,$5) RETURNING id,status,created_at",
-          [locationId,u.id,category,quantity,notes||null]
+          "INSERT INTO collection_requests(waste_record_id,location_id,requested_by,waste_category,quantity_kg,notes) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,waste_record_id,status,created_at",
+          [wasteRecordId,record.location_id,u.id,record.waste_category,record.quantity_kg,notes||null]
         );
         const request=inserted.rows[0];
         await client.query(
-          "INSERT INTO collection_request_events(request_id,changed_by,from_status,to_status,note) VALUES($1,$2,NULL,'pending','Request submitted')",
-          [request.id,u.id]
+          "INSERT INTO collection_request_events(request_id,changed_by,from_status,to_status,note) VALUES($1,$2,NULL,'pending','Collection requested for waste record #' || $3)",
+          [request.id,u.id,wasteRecordId]
         );
         await client.query("COMMIT");
         return send(res,201,{request});
       } catch(error) {
         await client.query("ROLLBACK");
+        if(error.code==="23505") return send(res,409,{error:"A collection request is already active for this waste record."});
         throw error;
       } finally {
         client.release();
@@ -103,26 +141,37 @@ export default async function handler(req,res) {
       const nextStatus=String(body.status||"");
       const note=body.admin_note==null ? null : (typeof body.admin_note==="string" ? body.admin_note.trim() : null);
       if(!requestId || !STATUSES.includes(nextStatus) || (body.admin_note!=null && typeof body.admin_note!=="string") || (note&&note.length>500)) {
-        return send(res,400,{error:"Provide a valid request ID, status, and an optional note under 500 characters."});
+        return send(res,400,{error:"Provide a valid request ID, status, and an optional admin note under 500 characters."});
       }
 
       const client=await db().connect();
       try {
         await client.query("BEGIN");
-        const current=await client.query("SELECT id,status FROM collection_requests WHERE id=$1 FOR UPDATE",[requestId]);
+        const current=await client.query(
+          "SELECT id,status,waste_record_id FROM collection_requests WHERE id=$1 FOR UPDATE",
+          [requestId]
+        );
         if(!current.rowCount) {
           await client.query("ROLLBACK");
           return send(res,404,{error:"Collection request not found."});
         }
         const previous=current.rows[0].status;
+        const wasteRecordId=current.rows[0].waste_record_id;
         if(previous===nextStatus) {
           await client.query("COMMIT");
           return send(res,200,{request:{id:requestId,status:previous},unchanged:true});
         }
+
         const updated=await client.query(
           "UPDATE collection_requests SET status=$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2 RETURNING id,status,updated_at",
           [nextStatus,requestId]
         );
+        if(wasteRecordId) {
+          await client.query(
+            "UPDATE waste_records SET collection_status=$1 WHERE id=$2",
+            [recordStatusForRequest(nextStatus),wasteRecordId]
+          );
+        }
         await client.query(
           "INSERT INTO collection_request_events(request_id,changed_by,from_status,to_status,note) VALUES($1,$2,$3,$4,$5)",
           [requestId,u.id,previous,nextStatus,note||null]

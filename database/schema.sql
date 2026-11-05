@@ -15,17 +15,30 @@ CREATE TABLE IF NOT EXISTS waste_records (
   id BIGSERIAL PRIMARY KEY, location_id BIGINT NOT NULL REFERENCES campus_locations(id),
   waste_category VARCHAR(30) NOT NULL CHECK (waste_category IN ('biodegradable','recyclable','reusable','craft','residual','e_waste')),
   quantity_kg NUMERIC(10,2) NOT NULL CHECK (quantity_kg >= 0),
-  collection_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (collection_status IN ('pending','collected','stored','processed','transferred')),
+  collection_status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (collection_status IN ('pending','assigned','in_progress','collected','stored','processed','transferred')),
   notes TEXT, recorded_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
   image_data BYTEA, image_mime VARCHAR(40), image_name VARCHAR(255),
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS collection_requests (
+  id BIGSERIAL PRIMARY KEY,
+  waste_record_id BIGINT REFERENCES waste_records(id) ON DELETE SET NULL,
+  location_id BIGINT NOT NULL REFERENCES campus_locations(id),
+  requested_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  waste_category VARCHAR(30) NOT NULL CHECK (waste_category IN ('biodegradable','recyclable','reusable','craft','residual','e_waste')),
+  quantity_kg NUMERIC(10,2) NOT NULL CHECK (quantity_kg > 0),
+  notes TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','assigned','in_progress','collected','stored','processed','transferred','rejected','approved')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS collection_request_events (
   id BIGSERIAL PRIMARY KEY,
   request_id BIGINT NOT NULL REFERENCES collection_requests(id) ON DELETE CASCADE,
   changed_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
-  from_status VARCHAR(20) CHECK (from_status IS NULL OR from_status IN ('pending','approved','in_progress','collected','rejected')),
-  to_status VARCHAR(20) NOT NULL CHECK (to_status IN ('pending','approved','in_progress','collected','rejected')),
+  from_status VARCHAR(20) CHECK (from_status IS NULL OR from_status IN ('pending','assigned','in_progress','collected','stored','processed','transferred','rejected','approved')),
+  to_status VARCHAR(20) NOT NULL CHECK (to_status IN ('pending','assigned','in_progress','collected','stored','processed','transferred','rejected','approved')),
   note VARCHAR(500),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -33,6 +46,8 @@ CREATE INDEX IF NOT EXISTS idx_collection_requests_owner_created
   ON collection_requests(requested_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_collection_request_events_request_created
   ON collection_request_events(request_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_collection_requests_waste_record ON collection_requests(waste_record_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_collection_requests_active_waste_record ON collection_requests(waste_record_id) WHERE waste_record_id IS NOT NULL AND status NOT IN ('collected','stored','processed','transferred','rejected');
 
 CREATE TABLE IF NOT EXISTS partners (
   id BIGSERIAL PRIMARY KEY, partner_name VARCHAR(150) NOT NULL,
@@ -50,17 +65,6 @@ CREATE TABLE IF NOT EXISTS craft_sales (
   sale_amount NUMERIC(10,2) NOT NULL CHECK (sale_amount >= 0),
   expense_amount NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (expense_amount >= 0),
   sold_on DATE NOT NULL, notes TEXT
-);
-CREATE TABLE IF NOT EXISTS collection_requests (
-  id BIGSERIAL PRIMARY KEY,
-  location_id BIGINT NOT NULL REFERENCES campus_locations(id),
-  requested_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
-  waste_category VARCHAR(30) NOT NULL CHECK (waste_category IN ('biodegradable','recyclable','reusable','craft','residual','e_waste')),
-  quantity_kg NUMERIC(10,2) NOT NULL CHECK (quantity_kg > 0),
-  notes TEXT,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','in_progress','collected','rejected')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- Campus locations; repeated setup does not create duplicates.
 INSERT INTO campus_locations (location_code, location_name, location_type, map_x, map_y, is_high_priority) VALUES

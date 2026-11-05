@@ -6,3 +6,16 @@
 .camera-card{margin:18px 0;display:grid;gap:12px}.camera-card h2{margin:3px 0 8px}.camera-card video{width:100%;max-height:420px;min-height:180px;object-fit:cover;background:#172b25;border-radius:14px}.camera-actions{display:flex;gap:10px;flex-wrap:wrap}.camera-actions button{width:auto;margin:0}.camera-actions .ghost{padding:12px 18px}.camera-actions button:disabled{opacity:.45;cursor:not-allowed}.camera-result{background:#edf6ef;border:1px solid #cfe4d3;border-radius:10px;padding:13px;font-size:13px;line-height:1.7}.camera-result small{display:block;color:#61756a;margin-top:5px}@media(max-width:720px){.camera-actions button{flex:1}}
 
 .request-history{min-width:150px;max-width:300px;white-space:normal}.request-history summary{color:#246642;font-weight:700;cursor:pointer}.request-history ol{margin:9px 0 2px;padding-left:18px}.request-history li{padding:7px 0;border-bottom:1px solid #edf1ee;line-height:1.4}.request-history li:last-child{border-bottom:0}.request-history small,.request-note{display:block;color:#748278;font-size:11px;margin-top:4px;white-space:normal}.request-history p{font-size:12px;margin:4px 0 0;white-space:normal}.collection-grid .request-status{min-width:125px}.collection-grid .tablewrap{overflow-x:auto}.collection-grid table{min-width:760px}.collection-grid td{vertical-align:top}
+
+
+.collection-record-summary{background:#f2f7f3;border:1px solid #e1ebe3;border-radius:10px;padding:11px 13px;font-size:12px;margin:8px 0 14px}
+.request-pill.assigned{background:#e8eefb;color:#35558b}
+.request-pill.stored{background:#e9eef7;color:#435d7c}
+.request-pill.processed{background:#eee8f8;color:#68458b}
+.request-pill.transferred{background:#e3f1f1;color:#28666a}
+.request-admin-actions{min-width:180px;display:grid;gap:7px}
+.request-admin-actions input{font-size:12px;padding:8px 9px;margin:0}
+.request-admin-actions select{margin:0}
+.request-admin-actions button{width:100%;margin:0;padding:8px 10px;font-size:12px}
+.request-admin-actions button:disabled,.request-admin-actions select:disabled,.request-admin-actions input:disabled{opacity:.55}
+@media(max-width:720px){.collection-record-summary{font-size:12px}.request-admin-actions{min-width:165px}}

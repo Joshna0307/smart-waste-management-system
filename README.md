@@ -1,30 +1,65 @@
 # JOY University Smart Waste Management System
 
-A simple PHP + MySQL web application for recording, segregating and monitoring waste generated across JOY University.
+A campus-focused web app for recording waste, requesting collection, and following material through collection, storage, processing and transfer.
 
-## Main features
-- User registration and login
-- Admin and user dashboards
-- Campus block, hostel, SAC and canteen waste records
-- Waste categories: biodegradable, recyclable, reusable, craft-suitable and residual
-- Collection, transport and storage tracking
-- Recycling/reuse partner directory
-- Craft-product sales, expenses, income and profit reports
-- Interactive 2D campus map (schematic based on the campus notice-board image)
+## Current features
+
+- User registration and sign-in with an HTTP-only session cookie
+- Admin and user views backed by Neon PostgreSQL
+- Campus locations for blocks, hostels, canteen and SAC, plus a schematic 2D campus map
+- Waste reports with category, quantity, notes and optional JPG/PNG/WEBP photo
+- Browser camera object-detection suggestion (COCO-SSD); users must verify the category manually
+- Collection requests linked to an existing waste record
+- User-scoped request tracking and admin-only status updates
+- Status history with actor, timestamp and optional admin note
+- Collection stages: pending, assigned, in progress, collected, stored, processed and transferred
 
 ## Technology
-HTML, CSS, JavaScript, PHP and MySQL. Chart.js will be used for reports.
 
-## Setup (Linux / XAMPP)
-1. Install PHP 8+, MySQL/MariaDB and a local web server (Apache).
-2. Copy this project folder into your server's web root (for example, `htdocs`).
-3. Create a MySQL database named `joy_waste_management`.
-4. Import `database/schema.sql` using phpMyAdmin or the MySQL command line.
-5. Update database credentials in `config/database.php`.
-6. Open the project through your local server, for example `http://localhost/smart-waste-management-system/`.
+- Frontend: HTML, CSS and vanilla JavaScript
+- API: Vercel Node.js serverless functions
+- Database: Neon PostgreSQL
+- Authentication: bcrypt password hashes and signed JWT in an HTTP-only cookie
 
-## Important
-The campus map will be a schematic 2D representation. Verify exact bin positions on campus before using it operationally. Do not enter real student personal information in a demonstration database.
+## Deployment configuration
 
-## Current status
-Initial project structure and database schema. More modules will be added step by step.
+Set these Vercel environment variables for Production (and Preview if needed):
+
+- `DATABASE_URL`: Neon PostgreSQL connection string
+- `JWT_SECRET`: long, random secret used to sign sessions
+
+Do not commit real credentials or place them in frontend JavaScript.
+
+## Database setup
+
+For a new database, run `database/schema.sql` once in the Neon SQL Editor.
+
+For an existing database created by an earlier version, run unapplied files in `database/migrations/` in numeric order. In particular, run:
+
+1. `002_collection_request_history.sql` if collection request history has not yet been installed
+2. `003_collection_request_workflow.sql` to add the waste-record link and the extended collection stages
+
+Migration 003 is designed to be re-runnable and preserves existing requests. Older requests remain visible with no linked waste record; new requests must reference a pending waste record.
+
+## Local development
+
+1. Install Node.js 20 or newer.
+2. Run `npm install`.
+3. Copy `.env.example` to `.env.local` and set a Neon `DATABASE_URL` and a strong `JWT_SECRET`.
+4. Run `npx vercel dev` to start the local Vercel development server.
+5. Run `npm run check` to syntax-check the API and browser JavaScript files.
+
+## Collection workflow
+
+1. A signed-in user records waste for a campus location.
+2. The user selects that pending waste record in **Request waste collection**. Location, category and quantity are read from the record, not trusted from the browser.
+3. The API verifies the session and record ownership, then creates the request and its first history event in one transaction.
+4. Users can see only their own requests and waste records. Admins can review all requests and change statuses.
+5. Admin status changes update the linked waste record and append an audit event. A rejected request returns the linked record to pending.
+
+## Operational notes
+
+- The map is schematic and not to scale; verify bin positions before operational use.
+- Camera classification is a general object detector, not a dedicated waste-material classifier. Confirm every suggested category.
+- Report images are stored in PostgreSQL; keep the 2 MB upload limit and monitor database storage.
+- Use demonstration accounts and non-sensitive sample data until campus access rules and admin provisioning are finalized.

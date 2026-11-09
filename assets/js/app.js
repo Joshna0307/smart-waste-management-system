@@ -188,7 +188,7 @@ async function renderCampusMap3D(locations){
    const labelCanvas=document.createElement("canvas");labelCanvas.width=1024;labelCanvas.height=256;
    const labelCtx=labelCanvas.getContext("2d");
    labelCtx.fillStyle=loc.is_high_priority?"rgba(115,55,18,.94)":"rgba(25,48,39,.92)";
-   labelCtx.beginPath();labelCtx.roundRect(12,12,1000,232,34);labelCtx.fill();
+   labelCtx.fillRect(12,12,1000,232);
    labelCtx.font="bold 62px Arial, sans-serif";labelCtx.textAlign="center";labelCtx.textBaseline="middle";
    labelCtx.fillStyle="#ffffff";
    let labelText=name;
@@ -196,8 +196,8 @@ async function renderCampusMap3D(locations){
    if(labelText!==name&&labelText.length>3)labelText=labelText.slice(0,-3)+"…";
    labelCtx.fillText(labelText,512,128);
    const labelTexture=new THREE.CanvasTexture(labelCanvas);labelTexture.colorSpace=THREE.SRGBColorSpace;
-   const labelMaterial=new THREE.SpriteMaterial({map:labelTexture,transparent:true,depthTest:false});
-   const nameLabel=new THREE.Sprite(labelMaterial);nameLabel.position.set(x,h+2.65,z);nameLabel.scale.set(13.5,3.4,1);nameLabel.renderOrder=5;campus.add(nameLabel);labelObjects.push(nameLabel);
+   const labelMaterial=new THREE.SpriteMaterial({map:labelTexture,transparent:true,depthTest:false,depthWrite:false});
+   const nameLabel=new THREE.Sprite(labelMaterial);nameLabel.position.set(x,h+4.2,z);nameLabel.scale.set(20,5,1);nameLabel.renderOrder=1000;campus.add(nameLabel);labelObjects.push(nameLabel);
    const bin=new THREE.Mesh(new THREE.CylinderGeometry(.48,.55,1.25,12),new THREE.MeshStandardMaterial({color:loc.is_high_priority?0xe1782c:0x26865a}));bin.position.set(x+w*.65,1,z+d*.55);bin.castShadow=true;bin.userData.location=loc;campus.add(bin);clickable.push(bin);
    // Flat coloured marker disc keeps each waste point visible from above.
    const disc=new THREE.Mesh(new THREE.CircleGeometry(1.05,20),new THREE.MeshBasicMaterial({color:loc.is_high_priority?0xffa34b:0x36a66e,side:THREE.DoubleSide}));disc.rotation.x=-Math.PI/2;disc.position.set(x+w*.65,.04,z+d*.55);campus.add(disc);
@@ -218,5 +218,5 @@ async function renderCampusMap3D(locations){
 }
 function selectMapLocation(loc){
  const select=$("#locations");if(select){select.value=String(loc.id);$("#mapMsg").textContent="Selected: "+loc.location_name+" · "+(loc.is_high_priority?"High priority collection point":"Campus collection point");}
- $("#wasteForm")?.scrollIntoView({behavior:"smooth",block:"center"});
+ // Keep the map in view after a building is selected; do not jump down the page.
 }

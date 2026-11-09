@@ -6,7 +6,7 @@ $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();msg.textC
 $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Creating account…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/register",{method:"POST",body:JSON.stringify(data)});await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#logout").addEventListener("click",async()=>{await api("/api/auth/logout",{method:"POST"});location.reload()});
 async function loadDashboard(){try{const [locs,records]=await Promise.all([api("/api/locations"),api("/api/waste")]);$("#locations").innerHTML='<option value="">Choose location</option>'+locs.locations.map(l=>'<option value="'+l.id+'">'+l.location_name+'</option>').join("");renderCampusMap(locs.locations);renderCampusMap3D(locs.locations);$("#locationList").innerHTML=locs.locations.map(l=>'<div class="loc"><b>'+l.location_name+'</b><span class="'+(l.is_high_priority?"priority":"muted")+'">'+(l.is_high_priority?"High priority":"Collection point")+'</span></div>').join("");renderRecords(records.records);$("#priority").textContent=locs.locations.filter(l=>l.is_high_priority).length;await loadCollections()}catch(e){$("#wasteMsg").textContent=e.message}}
-function renderCampusMap(locations){const group=$("#mapMarkers");if(!group)return;group.innerHTML=locations.map(l=>{const x=Number(l.map_x)||50,y=Number(l.map_y)||50;const label=String(l.location_name).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");return '<g class="map-marker '+(l.is_high_priority?'is-priority':'')+'" role="button" tabindex="0" aria-label="Select '+label+'" data-location="'+l.id+'"><circle class="marker-halo" cx="'+x+'" cy="'+y+'" r="3.2"/><circle class="marker-core" cx="'+x+'" cy="'+y+'" r="1.65"/><text x="'+(x+2.5)+'" y="'+(y-1.5)+'">'+label+'</text></g>'}).join("");group.querySelectorAll(".map-marker").forEach(m=>{const choose=()=>{const select=$("#locations");select.value=m.dataset.location;$("#mapMsg").textContent="Selected: "+select.options[select.selectedIndex].text;group.querySelectorAll(".map-marker").forEach(x=>x.classList.toggle("selected",x===m));$("#wasteForm").scrollIntoView({behavior:"smooth",block:"center"})};m.addEventListener("click",choose);m.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();choose()}})})}
+function renderCampusMap(locations){const group=$("#mapMarkers");if(!group)return;group.innerHTML=locations.map(l=>{const point=joyCampusPoint(l),x=point.x,y=point.y;const label=String(joyCampusLabel(l)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");return '<g class="map-marker '+(l.is_high_priority?'is-priority':'')+'" role="button" tabindex="0" aria-label="Select '+label+'" data-location="'+l.id+'"><circle class="marker-halo" cx="'+x+'" cy="'+y+'" r="3.2"/><circle class="marker-core" cx="'+x+'" cy="'+y+'" r="1.65"/><text x="'+(x+2.5)+'" y="'+(y-1.5)+'">'+label+'</text></g>'}).join("");group.querySelectorAll(".map-marker").forEach(m=>{const choose=()=>{const select=$("#locations");select.value=m.dataset.location;$("#mapMsg").textContent="Selected: "+select.options[select.selectedIndex].text;group.querySelectorAll(".map-marker").forEach(x=>x.classList.toggle("selected",x===m));$("#wasteForm").scrollIntoView({behavior:"smooth",block:"center"})};m.addEventListener("click",choose);m.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();choose()}})})}
 function renderRecords(rows){$("#count").textContent=rows.length;$("#kg").textContent=rows.reduce((a,r)=>a+Number(r.quantity_kg),0).toFixed(2);$("#records").innerHTML=rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.location_name)+'</td><td>'+escapeHtml(r.waste_category)+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td>'+escapeHtml(r.collection_status)+'</td><td>'+(r.has_image?'<a href="/api/report-image?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">View image</a>':'—')+'</td><td>'+new Date(r.recorded_at).toLocaleString()+'</td></tr>').join(""):'<tr><td colspan="6">No waste records yet.</td></tr>'}
 $("#wasteForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=Object.fromEntries(new FormData(form));const file=$("#wasteImage")?.files?.[0];delete f.image;$("#wasteMsg").textContent="Saving report…";try{if(file){if(file.size>2*1024*1024)throw new Error("Image must be 2 MB or smaller.");f.image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read image."));reader.readAsDataURL(file)});f.image_name=file.name}await api("/api/waste",{method:"POST",body:JSON.stringify(f)});$("#wasteMsg").textContent="Waste report and image saved to the cloud.";form.reset();const r=await api("/api/waste");renderRecords(r.records)}catch(x){$("#wasteMsg").textContent=x.message}});
 (async()=>{try{const r=await api("/api/auth/me");await enter(r.user)}catch{}})();
@@ -143,6 +143,29 @@ $("#detectWaste").addEventListener("click",async()=>{
 });
 
 
+// JOY University signboard reference layout: approximate positions traced from the user's campus-map photo.
+const joyCampusReference={
+ B01:[62,58],B02:[36,43],B03:[20,37],B04:[23,33],B05:[27,30],B06:[31,23],B07:[39,30],B08:[45,26],
+ B09:[49,32],B10:[56,28],B11:[61,38],B12:[52,43],B13:[47,48],B14:[54,46],B15:[55,41],B16:[58,38],
+ B17:[51,37],B18:[76,88],B19:[72,80],B20:[74,76],B21:[71,69],B22:[82,61],B23:[88,54],B24:[92,48],
+ B25:[86,39],B26:[83,34],B27:[79,29],B28:[73,25],B29:[68,31],B30:[72,91],B31:[30,82],B32:[39,65],
+ HA:[10,48],HB:[16,40],HC:[14,27],HD:[96,73],HE:[93,65],HF:[98,57]
+};
+const joyCampusNames={
+ B01:"1 Administrative Block",B02:"2 Gino Block",B03:"3 Soosai-A Block",B04:"4 Soosai-B Block",B05:"5 Selvam Block",
+ B06:"6 St. Lourdes Chapel",B07:"7 Adhikaram Block",B08:"8 S.A. Raja Memorial Block",B09:"9 Ghana Prakasam Block",
+ B10:"10 Annam Block",B11:"11 Grace Block",B12:"12 Celin Block",B13:"13 Joe Block",B14:"14 Arul Block",
+ B15:"15 S.A. Raja Convention Hall",B16:"16 Pushpam Block",B17:"17 Mithuraj Block",B18:"18 Cricket Ground",
+ B19:"19 Francis Block",B20:"20 Store & Maintenance",B21:"21 Student Activity Centre (SAC)",B22:"22 Manickam Block",
+ B23:"23 Football Turf",B24:"24 JU Arena",B25:"25 Joshua Block",B26:"26 Joveena Block",B27:"27 Julliana Block",
+ B28:"28 Security Office",B29:"29 Waiting Hall",B30:"30 Canteen",B31:"31 Outside Parking",B32:"32 Inside Parking",
+ HA:"A Sophia Hostel",HB:"B Green Field Entrance",HC:"C Green Field Stadium",HD:"D Cecily Hostel",HE:"E Theresa Hostel",HF:"F Devasahayam Hostel"
+};
+function joyCampusPoint(loc){
+ const p=joyCampusReference[String(loc.location_code||"").toUpperCase()];
+ return p?{x:p[0],y:p[1]}:{x:Number(loc.map_x)||50,y:Number(loc.map_y)||50};
+}
+function joyCampusLabel(loc){return joyCampusNames[String(loc.location_code||"").toUpperCase()]||String(loc.location_name||"Campus point")}
 // Interactive 3D campus map. Three.js is loaded only when the dashboard opens.
 let threeMap=null,threeModulePromise=null;
 function setCampusMapMode(mode){

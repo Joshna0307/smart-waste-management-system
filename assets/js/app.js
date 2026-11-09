@@ -5,7 +5,7 @@ let currentUser=null;async function enter(user){currentUser=user;auth.classList.
 $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Signing in…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/login",{method:"POST",body:JSON.stringify(data)});await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Creating account…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/register",{method:"POST",body:JSON.stringify(data)});await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#logout").addEventListener("click",async()=>{await api("/api/auth/logout",{method:"POST"});location.reload()});
-async function loadDashboard(){try{const [locs,records]=await Promise.all([api("/api/locations"),api("/api/waste")]);$("#locations").innerHTML='<option value="">Choose location</option>'+locs.locations.map(l=>'<option value="'+l.id+'">'+l.location_name+'</option>').join("");renderCampusMap(locs.locations);$("#locationList").innerHTML=locs.locations.map(l=>'<div class="loc"><b>'+l.location_name+'</b><span class="'+(l.is_high_priority?"priority":"muted")+'">'+(l.is_high_priority?"High priority":"Collection point")+'</span></div>').join("");renderRecords(records.records);$("#priority").textContent=locs.locations.filter(l=>l.is_high_priority).length;await loadCollections()}catch(e){$("#wasteMsg").textContent=e.message}}
+async function loadDashboard(){try{const [locs,records]=await Promise.all([api("/api/locations"),api("/api/waste")]);$("#locations").innerHTML='<option value="">Choose location</option>'+locs.locations.map(l=>'<option value="'+l.id+'">'+l.location_name+'</option>').join("");renderCampusMap(locs.locations);renderCampusMap3D(locs.locations);$("#locationList").innerHTML=locs.locations.map(l=>'<div class="loc"><b>'+l.location_name+'</b><span class="'+(l.is_high_priority?"priority":"muted")+'">'+(l.is_high_priority?"High priority":"Collection point")+'</span></div>').join("");renderRecords(records.records);$("#priority").textContent=locs.locations.filter(l=>l.is_high_priority).length;await loadCollections()}catch(e){$("#wasteMsg").textContent=e.message}}
 function renderCampusMap(locations){const group=$("#mapMarkers");if(!group)return;group.innerHTML=locations.map(l=>{const x=Number(l.map_x)||50,y=Number(l.map_y)||50;const label=String(l.location_name).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");return '<g class="map-marker '+(l.is_high_priority?'is-priority':'')+'" role="button" tabindex="0" aria-label="Select '+label+'" data-location="'+l.id+'"><circle class="marker-halo" cx="'+x+'" cy="'+y+'" r="3.2"/><circle class="marker-core" cx="'+x+'" cy="'+y+'" r="1.65"/><text x="'+(x+2.5)+'" y="'+(y-1.5)+'">'+label+'</text></g>'}).join("");group.querySelectorAll(".map-marker").forEach(m=>{const choose=()=>{const select=$("#locations");select.value=m.dataset.location;$("#mapMsg").textContent="Selected: "+select.options[select.selectedIndex].text;group.querySelectorAll(".map-marker").forEach(x=>x.classList.toggle("selected",x===m));$("#wasteForm").scrollIntoView({behavior:"smooth",block:"center"})};m.addEventListener("click",choose);m.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();choose()}})})}
 function renderRecords(rows){$("#count").textContent=rows.length;$("#kg").textContent=rows.reduce((a,r)=>a+Number(r.quantity_kg),0).toFixed(2);$("#records").innerHTML=rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.location_name)+'</td><td>'+escapeHtml(r.waste_category)+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td>'+escapeHtml(r.collection_status)+'</td><td>'+(r.has_image?'<a href="/api/report-image?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">View image</a>':'—')+'</td><td>'+new Date(r.recorded_at).toLocaleString()+'</td></tr>').join(""):'<tr><td colspan="6">No waste records yet.</td></tr>'}
 $("#wasteForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=Object.fromEntries(new FormData(form));const file=$("#wasteImage")?.files?.[0];delete f.image;$("#wasteMsg").textContent="Saving report…";try{if(file){if(file.size>2*1024*1024)throw new Error("Image must be 2 MB or smaller.");f.image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read image."));reader.readAsDataURL(file)});f.image_name=file.name}await api("/api/waste",{method:"POST",body:JSON.stringify(f)});$("#wasteMsg").textContent="Waste report and image saved to the cloud.";form.reset();const r=await api("/api/waste");renderRecords(r.records)}catch(x){$("#wasteMsg").textContent=x.message}});
@@ -141,3 +141,68 @@ $("#detectWaste").addEventListener("click",async()=>{
  }catch(e){status.textContent=e.message||"Detection failed."}
  finally{button.disabled=false}
 });
+
+
+// Interactive 3D campus map. Three.js is loaded only when the dashboard opens.
+let threeMap=null,threeModulePromise=null;
+function setCampusMapMode(mode){
+ const is3d=mode==="3d";
+ $("#campusMap3D")?.classList.toggle("hidden",!is3d);
+ $("#campusMap2D")?.classList.toggle("hidden",is3d);
+ $("#show3DMap")?.classList.toggle("active",is3d);
+ $("#show2DMap")?.classList.toggle("active",!is3d);
+ if(is3d&&threeMap?.resize)threeMap.resize();
+}
+$("#show3DMap")?.addEventListener("click",()=>setCampusMapMode("3d"));
+$("#show2DMap")?.addEventListener("click",()=>setCampusMapMode("2d"));
+async function renderCampusMap3D(locations){
+ const host=$("#campusMap3D");if(!host)return;
+ try{
+  if(!threeModulePromise)threeModulePromise=import("https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js");
+  const THREE=await threeModulePromise;
+  host.innerHTML="";
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0xdcebf1);scene.fog=new THREE.Fog(0xdcebf1,95,180);
+  const camera=new THREE.PerspectiveCamera(42,1,0.1,300);camera.position.set(0,54,78);
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;host.appendChild(renderer.domElement);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x78927a,2));
+  const sun=new THREE.DirectionalLight(0xffffff,2.1);sun.position.set(-35,65,35);sun.castShadow=true;scene.add(sun);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(112,112),new THREE.MeshStandardMaterial({color:0x8dbb83,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.18;ground.receiveShadow=true;scene.add(ground);
+  const campus=new THREE.Group();scene.add(campus);
+  const roadMat=new THREE.MeshStandardMaterial({color:0xc9d1c9,roughness:1});
+  [[0,0,5,100],[0,0,100,5],[-25,0,4,76],[26,0,4,76],[0,-25,76,4],[0,26,76,4]].forEach(([x,z,w,d])=>{const road=new THREE.Mesh(new THREE.BoxGeometry(w,.08,d),roadMat);road.position.set(x,.01,z);campus.add(road)});
+  const treeMat=new THREE.MeshStandardMaterial({color:0x397b4b}),trunkMat=new THREE.MeshStandardMaterial({color:0x79563b});
+  for(let i=0;i<34;i++){const x=((i*37)%96)-48,z=((i*53)%96)-48;if(Math.abs(x)<9||Math.abs(z)<9)continue;const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.3,1.4,7),trunkMat);trunk.position.set(x,.7,z);const crown=new THREE.Mesh(new THREE.SphereGeometry(1.05,8,7),treeMat);crown.position.set(x,1.8,z);trunk.castShadow=crown.castShadow=true;campus.add(trunk,crown)}
+  const clickable=[];const labelObjects=[];
+  const clamp=(v)=>Math.max(-43,Math.min(43,v));
+  locations.forEach((loc,i)=>{
+   const x=clamp((Number(loc.map_x)||50)-50),z=clamp((Number(loc.map_y)||50)-50);
+   const name=String(loc.location_name||"Campus point");
+   const lower=name.toLowerCase();
+   const isHostel=lower.includes("hostel"),isFood=lower.includes("canteen")||lower.includes("food")||lower.includes("cafe"),isSac=lower.includes("sac");
+   const w=isHostel?8:isFood?9:isSac?10:6.2,d=isHostel?7:isFood?8:isSac?9:6.2,h=isHostel?7.5:isFood?4.5:isSac?6:5.2;
+   const color=loc.is_high_priority?0xd78a43:(isHostel?0xe8d8a8:isFood?0xd8b98c:isSac?0xc4d8e8:0xd7e2d7);
+   const base=new THREE.Mesh(new THREE.BoxGeometry(w+.7,.35,d+.7),new THREE.MeshStandardMaterial({color:0x657b68}));base.position.set(x,.18,z);base.receiveShadow=true;campus.add(base);
+   const building=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.85}));building.position.set(x,h/2+.35,z);building.castShadow=true;building.receiveShadow=true;building.userData.location=loc;campus.add(building);clickable.push(building);
+   const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.25,.35,d+.25),new THREE.MeshStandardMaterial({color:loc.is_high_priority?0xb9672c:0x829b88}));roof.position.set(x,h+.55,z);roof.castShadow=true;campus.add(roof);
+   const bin=new THREE.Mesh(new THREE.CylinderGeometry(.48,.55,1.25,12),new THREE.MeshStandardMaterial({color:loc.is_high_priority?0xe1782c:0x26865a}));bin.position.set(x+w*.65,1,z+d*.55);bin.castShadow=true;bin.userData.location=loc;campus.add(bin);clickable.push(bin);
+   // Flat coloured marker disc keeps each waste point visible from above.
+   const disc=new THREE.Mesh(new THREE.CircleGeometry(1.05,20),new THREE.MeshBasicMaterial({color:loc.is_high_priority?0xffa34b:0x36a66e,side:THREE.DoubleSide}));disc.rotation.x=-Math.PI/2;disc.position.set(x+w*.65,.04,z+d*.55);campus.add(disc);
+  });
+  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let dragging=false,lastX=0,lastY=0,rotY=.35,rotX=.58,distance=88;
+  camera.position.set(Math.sin(rotY)*distance,Math.sin(rotX)*distance,Math.cos(rotY)*distance);camera.lookAt(0,0,0);
+  function resize(){const width=host.clientWidth||700,height=host.clientHeight||480;renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix()}
+  resize();window.addEventListener("resize",resize);
+  renderer.domElement.addEventListener("pointerdown",e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
+  renderer.domElement.addEventListener("pointermove",e=>{if(!dragging)return;rotY-=(e.clientX-lastX)*.008;rotX=Math.max(.2,Math.min(1.15,rotX+(e.clientY-lastY)*.006));lastX=e.clientX;lastY=e.clientY;updateCamera()});
+  renderer.domElement.addEventListener("pointerup",e=>{if(!dragging)return;dragging=false;const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(clickable,false);if(hits.length){const loc=hits[0].object.userData.location;if(loc)selectMapLocation(loc)}});
+  renderer.domElement.addEventListener("pointercancel",()=>dragging=false);
+  renderer.domElement.addEventListener("wheel",e=>{e.preventDefault();distance=Math.max(42,Math.min(125,distance+e.deltaY*.055));updateCamera()},{passive:false});
+  function updateCamera(){camera.position.set(Math.sin(rotY)*distance,Math.sin(rotX)*distance,Math.cos(rotY)*distance);camera.lookAt(0,0,0)}
+  let frame;function animate(){frame=requestAnimationFrame(animate);renderer.render(scene,camera)}
+  animate();threeMap={resize,dispose(){cancelAnimationFrame(frame);window.removeEventListener("resize",resize);renderer.dispose()}};
+ }catch(error){host.innerHTML='<div class="map-error">3D view could not load. Check your internet connection or use the 2D view. ('+escapeHtml(error.message)+')</div>'}
+}
+function selectMapLocation(loc){
+ const select=$("#locations");if(select){select.value=String(loc.id);$("#mapMsg").textContent="Selected: "+loc.location_name+" · "+(loc.is_high_priority?"High priority collection point":"Campus collection point");}
+ $("#wasteForm")?.scrollIntoView({behavior:"smooth",block:"center"});
+}

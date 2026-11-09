@@ -184,6 +184,20 @@ async function renderCampusMap3D(locations){
    const base=new THREE.Mesh(new THREE.BoxGeometry(w+.7,.35,d+.7),new THREE.MeshStandardMaterial({color:0x657b68}));base.position.set(x,.18,z);base.receiveShadow=true;campus.add(base);
    const building=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.85}));building.position.set(x,h/2+.35,z);building.castShadow=true;building.receiveShadow=true;building.userData.location=loc;campus.add(building);clickable.push(building);
    const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.25,.35,d+.25),new THREE.MeshStandardMaterial({color:loc.is_high_priority?0xb9672c:0x829b88}));roof.position.set(x,h+.55,z);roof.castShadow=true;campus.add(roof);
+   // Floating readable name label above every 3D campus building.
+   const labelCanvas=document.createElement("canvas");labelCanvas.width=1024;labelCanvas.height=256;
+   const labelCtx=labelCanvas.getContext("2d");
+   labelCtx.fillStyle=loc.is_high_priority?"rgba(115,55,18,.94)":"rgba(25,48,39,.92)";
+   labelCtx.beginPath();labelCtx.roundRect(12,12,1000,232,34);labelCtx.fill();
+   labelCtx.font="bold 62px Arial, sans-serif";labelCtx.textAlign="center";labelCtx.textBaseline="middle";
+   labelCtx.fillStyle="#ffffff";
+   let labelText=name;
+   while(labelCtx.measureText(labelText).width>930&&labelText.length>12){labelText=labelText.slice(0,-1)}
+   if(labelText!==name&&labelText.length>3)labelText=labelText.slice(0,-3)+"…";
+   labelCtx.fillText(labelText,512,128);
+   const labelTexture=new THREE.CanvasTexture(labelCanvas);labelTexture.colorSpace=THREE.SRGBColorSpace;
+   const labelMaterial=new THREE.SpriteMaterial({map:labelTexture,transparent:true,depthTest:false});
+   const nameLabel=new THREE.Sprite(labelMaterial);nameLabel.position.set(x,h+2.65,z);nameLabel.scale.set(13.5,3.4,1);nameLabel.renderOrder=5;campus.add(nameLabel);labelObjects.push(nameLabel);
    const bin=new THREE.Mesh(new THREE.CylinderGeometry(.48,.55,1.25,12),new THREE.MeshStandardMaterial({color:loc.is_high_priority?0xe1782c:0x26865a}));bin.position.set(x+w*.65,1,z+d*.55);bin.castShadow=true;bin.userData.location=loc;campus.add(bin);clickable.push(bin);
    // Flat coloured marker disc keeps each waste point visible from above.
    const disc=new THREE.Mesh(new THREE.CircleGeometry(1.05,20),new THREE.MeshBasicMaterial({color:loc.is_high_priority?0xffa34b:0x36a66e,side:THREE.DoubleSide}));disc.rotation.x=-Math.PI/2;disc.position.set(x+w*.65,.04,z+d*.55);campus.add(disc);

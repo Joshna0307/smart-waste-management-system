@@ -5,7 +5,7 @@ let currentUser=null;async function enter(user){currentUser=user;auth.classList.
 $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Signing in…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/login",{method:"POST",body:JSON.stringify(data)});await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Creating account…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/register",{method:"POST",body:JSON.stringify(data)});await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#logout").addEventListener("click",async()=>{await api("/api/auth/logout",{method:"POST"});location.reload()});
-async function loadDashboard(){try{const [locs,records]=await Promise.all([api("/api/locations"),api("/api/waste")]);$("#locations").innerHTML='<option value="">Choose location</option>'+locs.locations.map(l=>'<option value="'+l.id+'">'+l.location_name+'</option>').join("");renderCampusMap(locs.locations);renderCampusMap3D(locs.locations);$("#locationList").innerHTML=locs.locations.map(l=>'<div class="loc"><b>'+l.location_name+'</b><span class="'+(l.is_high_priority?"priority":"muted")+'">'+(l.is_high_priority?"High priority":"Collection point")+'</span></div>').join("");renderRecords(records.records);$("#priority").textContent=locs.locations.filter(l=>l.is_high_priority).length;await loadCollections()}catch(e){$("#wasteMsg").textContent=e.message}}
+async function loadDashboard(){try{const [locs,records]=await Promise.all([api("/api/locations"),api("/api/waste")]);const collectionLocation=$("#collectionLocation");if(collectionLocation)collectionLocation.innerHTML='<option value="">Choose campus location</option>'+locs.locations.map(l=>'<option value="'+l.id+'">'+escapeHtml(l.location_name)+'</option>').join("");$("#locations").innerHTML='<option value="">Choose location</option>'+locs.locations.map(l=>'<option value="'+l.id+'">'+l.location_name+'</option>').join("");renderCampusMap(locs.locations);renderCampusMap3D(locs.locations);$("#locationList").innerHTML=locs.locations.map(l=>'<div class="loc"><b>'+l.location_name+'</b><span class="'+(l.is_high_priority?"priority":"muted")+'">'+(l.is_high_priority?"High priority":"Collection point")+'</span></div>').join("");renderRecords(records.records);$("#priority").textContent=locs.locations.filter(l=>l.is_high_priority).length;await loadCollections()}catch(e){$("#wasteMsg").textContent=e.message}}
 function renderCampusMap(locations){const group=$("#mapMarkers");if(!group)return;group.innerHTML=locations.map(l=>{const point=joyCampusPoint(l),x=point.x,y=point.y;const label=String(joyCampusLabel(l)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");return '<g class="map-marker '+(l.is_high_priority?'is-priority':'')+'" role="button" tabindex="0" aria-label="Select '+label+'" data-location="'+l.id+'"><circle class="marker-halo" cx="'+x+'" cy="'+y+'" r="3.2"/><circle class="marker-core" cx="'+x+'" cy="'+y+'" r="1.65"/><text x="'+(x+2.5)+'" y="'+(y-1.5)+'">'+label+'</text></g>'}).join("");group.querySelectorAll(".map-marker").forEach(m=>{const choose=()=>{const select=$("#locations");select.value=m.dataset.location;$("#mapMsg").textContent="Selected: "+select.options[select.selectedIndex].text;group.querySelectorAll(".map-marker").forEach(x=>x.classList.toggle("selected",x===m));$("#wasteForm").scrollIntoView({behavior:"smooth",block:"center"})};m.addEventListener("click",choose);m.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();choose()}})})}
 function renderRecords(rows){$("#count").textContent=rows.length;$("#kg").textContent=rows.reduce((a,r)=>a+Number(r.quantity_kg),0).toFixed(2);$("#records").innerHTML=rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.location_name)+'</td><td>'+escapeHtml(r.waste_category)+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td>'+escapeHtml(r.collection_status)+'</td><td>'+(r.has_image?'<a href="/api/report-image?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">View image</a>':'—')+'</td><td>'+new Date(r.recorded_at).toLocaleString()+'</td></tr>').join(""):'<tr><td colspan="6">No waste records yet.</td></tr>'}
 $("#wasteForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=Object.fromEntries(new FormData(form));const file=$("#wasteImage")?.files?.[0];delete f.image;$("#wasteMsg").textContent="Saving report…";try{if(file){if(file.size>2*1024*1024)throw new Error("Image must be 2 MB or smaller.");f.image_data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Could not read image."));reader.readAsDataURL(file)});f.image_name=file.name}await api("/api/waste",{method:"POST",body:JSON.stringify(f)});$("#wasteMsg").textContent="Waste report and image saved to the cloud.";form.reset();const r=await api("/api/waste");renderRecords(r.records)}catch(x){$("#wasteMsg").textContent=x.message}});
@@ -20,70 +20,41 @@ function updateCollectionRecordSummary(){
 async function loadCollections(){
  try{
   const data=await api("/api/collections");
-  const recordSelect=$("#collectionRecord");
-  const available=Array.isArray(data.available_records)?data.available_records:[];
-  if(recordSelect){
-   const previous=recordSelect.value;
-   recordSelect.innerHTML='<option value="">Choose a pending waste record</option>'+available.map(r=>{
-    const label="Record #"+r.id+" · "+r.location_name+" · "+r.waste_category.replace(/_/g," ")+" · "+Number(r.quantity_kg).toFixed(2)+" kg";
-    const summary="Record #"+r.id+" · "+r.location_name+" · "+r.waste_category.replace(/_/g," ")+" · "+Number(r.quantity_kg).toFixed(2)+" kg";
-    return '<option value="'+escapeHtml(r.id)+'" data-summary="'+escapeHtml(summary)+'">'+escapeHtml(label)+'</option>';
-   }).join("");
-   if(available.some(r=>String(r.id)===previous))recordSelect.value=previous;
-   recordSelect.disabled=available.length===0;
-   const submit=$("#collectionForm button[type=submit]");
-   if(submit)submit.disabled=available.length===0;
-   updateCollectionRecordSummary();
-  }
   const body=$("#collectionRows");
   if(!data.requests.length){body.innerHTML='<tr><td colspan="7">No collection requests yet.</td></tr>';return}
   const baseOptions=["pending","assigned","in_progress","collected","stored","processed","transferred","rejected"];
   body.innerHTML=data.requests.map(r=>{
    const events=Array.isArray(r.history)?r.history:[];
-   const history=events.length
-    ?'<details class="request-history"><summary>View history ('+events.length+')</summary><ol>'+events.map(event=>{
-      const from=event.from_status?event.from_status.replace(/_/g," "):"submitted";
-      const to=String(event.to_status||"").replace(/_/g," ");
-      const when=new Date(event.created_at).toLocaleString();
-      return '<li><b>'+escapeHtml(from)+' → '+escapeHtml(to)+'</b><small>'+escapeHtml(when)+' · '+escapeHtml(event.changed_by_name||"System")+'</small>'+(event.note?'<p>'+escapeHtml(event.note)+'</p>':'')+'</li>';
-     }).join("")+'</ol></details>'
-    :'<span class="muted">No history</span>';
+   const history=events.length?'<details class="request-history"><summary>View history ('+events.length+')</summary><ol>'+events.map(event=>{
+    const from=event.from_status?event.from_status.replace(/_/g," "):"submitted";
+    const to=String(event.to_status||"").replace(/_/g," ");
+    return '<li><b>'+escapeHtml(from)+' → '+escapeHtml(to)+'</b><small>'+escapeHtml(new Date(event.created_at).toLocaleString())+' · '+escapeHtml(event.changed_by_name||"System")+'</small>'+(event.note?'<p>'+escapeHtml(event.note)+'</p>':'')+'</li>';
+   }).join("")+'</ol></details>':'<span class="muted">No history</span>';
    const options=r.status==="approved"?["approved",...baseOptions]:baseOptions;
-   const action=currentUser&&currentUser.role==="admin"
-    ?'<div class="request-admin-actions"><select class="request-status" data-current="'+escapeHtml(r.status)+'" aria-label="Update request status">'+options.map(s=>'<option value="'+s+'" '+(s===r.status?'selected':'')+'>'+s.replace(/_/g," ")+'</option>').join("")+'</select><input class="request-admin-note" type="text" maxlength="500" placeholder="Optional update note" aria-label="Admin update note"><button type="button" class="ghost request-update" data-id="'+escapeHtml(r.id)+'">Save status</button></div>'
-    :'Admin only';
-   const statusLabel=r.status==="approved"?"approved (legacy)":String(r.status).replace(/_/g," ");
-   return '<tr><td><b>Waste #'+escapeHtml(r.waste_record_id??"legacy")+'</b><small class="request-note">'+escapeHtml(r.location_name)+'</small><small class="request-note">Requested by '+escapeHtml(r.requester_name||"Former user")+'</small></td><td>'+escapeHtml(r.waste_category)+(r.notes?'<small class="request-note">'+escapeHtml(r.notes)+'</small>':'')+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td><span class="request-pill '+escapeHtml(r.status)+'">'+escapeHtml(statusLabel)+'</span></td><td>'+new Date(r.created_at).toLocaleString()+'</td><td>'+history+'</td><td>'+action+'</td></tr>';
+   const action=currentUser&&currentUser.role==="admin"?'<select class="request-status" data-current="'+escapeHtml(r.status)+'">'+options.map(s=>'<option value="'+s+'" '+(s===r.status?"selected":"")+'>'+s.replace(/_/g," ")+'</option>').join("")+'</select><input class="request-admin-note" placeholder="Admin note"><button type="button" class="request-update" data-id="'+r.id+'">Save</button>':'—';
+   return '<tr><td>Request #'+r.id+'<small>'+escapeHtml(r.location_name||"Campus location")+'</small></td><td>'+escapeHtml(r.waste_category)+(r.notes?'<small class="request-note">'+escapeHtml(r.notes)+'</small>':'')+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td><span class="request-pill '+escapeHtml(r.status)+'">'+escapeHtml(r.status.replace(/_/g," "))+'</span></td><td>'+new Date(r.created_at).toLocaleString()+'</td><td>'+history+'</td><td>'+action+'</td></tr>';
   }).join("");
   body.querySelectorAll(".request-update").forEach(button=>button.addEventListener("click",async()=>{
-   const row=button.closest("tr"),select=row.querySelector(".request-status"),note=row.querySelector(".request-admin-note");
-   const previous=select.dataset.current;
-   button.disabled=true;select.disabled=true;note.disabled=true;
-   $("#collectionMsg").textContent="Updating request…";
-   try{
-    await api("/api/collections",{method:"PATCH",body:JSON.stringify({id:button.dataset.id,status:select.value,admin_note:note.value.trim()})});
-    $("#collectionMsg").textContent="Status saved and added to the request history.";
-    await loadCollections();
-   }catch(error){
-    select.value=previous;
-    $("#collectionMsg").textContent=error.message;
-   }finally{button.disabled=false;select.disabled=false;note.disabled=false}
+   const row=button.closest("tr"),select=row.querySelector(".request-status"),note=row.querySelector(".request-admin-note"),previous=select.dataset.current;
+   button.disabled=true;select.disabled=true;note.disabled=true;$("#collectionMsg").textContent="Updating request…";
+   try{await api("/api/collections",{method:"PATCH",body:JSON.stringify({id:button.dataset.id,status:select.value,admin_note:note.value.trim()})});$("#collectionMsg").textContent="Status saved and added to the request history.";await loadCollections()}
+   catch(error){select.value=previous;$("#collectionMsg").textContent=error.message}
+   finally{button.disabled=false;select.disabled=false;note.disabled=false}
   }));
  }catch(error){$("#collectionRows").innerHTML='<tr><td colspan="7">'+escapeHtml(error.message)+'</td></tr>'}
 }
-$("#collectionRecord")?.addEventListener("change",updateCollectionRecordSummary);
+
+
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 $("#collectionForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const form=e.currentTarget,button=form.querySelector("button[type=submit]");
  const values=Object.fromEntries(new FormData(form));
- button.disabled=true;
- $("#collectionMsg").textContent="Submitting request…";
+ button.disabled=true;$("#collectionMsg").textContent="Submitting request…";
  try{
   await api("/api/collections",{method:"POST",body:JSON.stringify(values)});
-  form.reset();
-  await loadCollections();
-  $("#collectionMsg").textContent="Collection request submitted. You can track each status and its history below.";
+  form.reset();await loadCollections();
+  $("#collectionMsg").textContent="Collection request submitted successfully. You can track its status below.";
  }catch(error){$("#collectionMsg").textContent=error.message}
  finally{button.disabled=false}
 });

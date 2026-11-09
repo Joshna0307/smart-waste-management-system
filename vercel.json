@@ -6,15 +6,50 @@
     }
   },
   "redirects": [
-    { "source": "/index.php", "destination": "/", "permanent": true },
-    { "source": "/user/dashboard.php", "destination": "/", "permanent": true },
-    { "source": "/admin/dashboard.php", "destination": "/", "permanent": true },
-    { "source": "/register.php", "destination": "/", "permanent": true },
-    { "source": "/auth/login.php", "destination": "/", "permanent": true },
-    { "source": "/auth/register.php", "destination": "/", "permanent": true },
-    { "source": "/auth/logout.php", "destination": "/", "permanent": true }
+    {
+      "source": "/index.php",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/user/dashboard.php",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/admin/dashboard.php",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/register.php",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/auth/login.php",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/auth/register.php",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/auth/logout.php",
+      "destination": "/",
+      "permanent": true
+    }
   ],
   "rewrites": [
-    { "source": "/", "destination": "/index.html" }
+    {
+      "source": "/admin-login",
+      "destination": "/admin-login.html"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
+    }
   ]
 }

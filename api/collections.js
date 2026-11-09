@@ -79,49 +79,68 @@ export default async function handler(req,res) {
 
     if(req.method==="POST") {
       const body=req.body||{};
-      const wasteRecordId=validId(body.waste_record_id);
+      const wasteRecordId=body.waste_record_id ? validId(body.waste_record_id) : null;
       const notes=body.notes==null ? null : (typeof body.notes==="string" ? body.notes.trim() : null);
-      if(!wasteRecordId || (body.notes!=null && typeof body.notes!=="string") || (notes&&notes.length>1000)) {
-        return send(res,400,{error:"Choose a pending waste record and keep pickup notes under 1000 characters."});
+      if((body.waste_record_id && !wasteRecordId) || (body.notes!=null && typeof body.notes!=="string") || (notes&&notes.length>1000)) {
+        return send(res,400,{error:"Check the selected waste record and keep pickup notes under 1000 characters."});
       }
 
       const client=await db().connect();
       try {
         await client.query("BEGIN");
-        const recordResult=await client.query(
-          "SELECT id,location_id,waste_category,quantity_kg,collection_status,recorded_by FROM waste_records WHERE id=$1 FOR UPDATE",
-          [wasteRecordId]
-        );
-        if(!recordResult.rowCount) {
-          await client.query("ROLLBACK");
-          return send(res,404,{error:"Waste record not found."});
-        }
-        const record=recordResult.rows[0];
-        if(u.role!=="admin" && String(record.recorded_by)!==String(u.id)) {
-          await client.query("ROLLBACK");
-          return send(res,404,{error:"Waste record not found."});
-        }
-        if(record.collection_status!=="pending") {
-          await client.query("ROLLBACK");
-          return send(res,409,{error:"This waste record is no longer waiting for collection."});
-        }
-        const active=await client.query(
-          "SELECT id FROM collection_requests WHERE waste_record_id=$1 AND status NOT IN ('collected','stored','processed','transferred','rejected') LIMIT 1",
-          [wasteRecordId]
-        );
-        if(active.rowCount) {
-          await client.query("ROLLBACK");
-          return send(res,409,{error:"A collection request is already active for this waste record."});
+        let locationId,category,quantity;
+        if(wasteRecordId) {
+          const recordResult=await client.query(
+            "SELECT id,location_id,waste_category,quantity_kg,collection_status,recorded_by FROM waste_records WHERE id=$1 FOR UPDATE",
+            [wasteRecordId]
+          );
+          if(!recordResult.rowCount) {
+            await client.query("ROLLBACK");
+            return send(res,404,{error:"Waste record not found."});
+          }
+          const record=recordResult.rows[0];
+          if(u.role!=="admin" && String(record.recorded_by)!==String(u.id)) {
+            await client.query("ROLLBACK");
+            return send(res,404,{error:"Waste record not found."});
+          }
+          if(record.collection_status!=="pending") {
+            await client.query("ROLLBACK");
+            return send(res,409,{error:"This waste record is no longer waiting for collection."});
+          }
+          locationId=record.location_id;category=record.waste_category;quantity=Number(record.quantity_kg);
+          const active=await client.query(
+            "SELECT id FROM collection_requests WHERE waste_record_id=$1 AND status NOT IN ('collected','stored','processed','transferred','rejected') LIMIT 1",
+            [wasteRecordId]
+          );
+          if(active.rowCount) {
+            await client.query("ROLLBACK");
+            return send(res,409,{error:"A collection request is already active for this waste record."});
+          }
+        } else {
+          locationId=validId(body.location_id);
+          category=String(body.waste_category||"");
+          const rawQuantity=String(body.quantity_kg??"").trim();
+          quantity=Number(rawQuantity);
+          const categories=["biodegradable","recyclable","reusable","craft","residual","e_waste"];
+          if(!locationId || !categories.includes(category) || !/^[0-9]+(?:\\.[0-9]{1,2})?$/.test(rawQuantity) || !Number.isFinite(quantity) || quantity<=0 || quantity>100000) {
+            await client.query("ROLLBACK");
+            return send(res,400,{error:"Choose a campus location and waste category, and enter a quantity greater than 0 kg."});
+          }
+          const location=await client.query("SELECT id FROM campus_locations WHERE id=$1",[locationId]);
+          if(!location.rowCount) {
+            await client.query("ROLLBACK");
+            return send(res,400,{error:"That campus location does not exist."});
+          }
         }
 
         const inserted=await client.query(
           "INSERT INTO collection_requests(waste_record_id,location_id,requested_by,waste_category,quantity_kg,notes) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,waste_record_id,status,created_at",
-          [wasteRecordId,record.location_id,u.id,record.waste_category,record.quantity_kg,notes||null]
+          [wasteRecordId,locationId,u.id,category,quantity,notes||null]
         );
         const request=inserted.rows[0];
         await client.query(
-          "INSERT INTO collection_request_events(request_id,changed_by,from_status,to_status,note) VALUES($1,$2,NULL,'pending','Collection requested for waste record #' || $3)",
-          [request.id,u.id,wasteRecordId]
+          "INSERT INTO collection_request_events(request_id,changed_by,from_status,to_status,note) VALUES($1,$2,NULL,'pending',$3)",
+          [request.id,u.id,wasteRecordId ? "Collection requested for waste record #"+wasteRecordId : "Direct campus collection request"]
         );
         await client.query("COMMIT");
         return send(res,201,{request});

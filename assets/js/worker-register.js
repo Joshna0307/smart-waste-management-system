@@ -7,7 +7,7 @@ form.addEventListener("submit",async e=>{
   if(values.password!==values.confirmPassword){message.textContent="Passwords do not match.";return;}
   button.disabled=true;message.style.color="#708078";message.textContent="Submitting registration…";
   try{
-    const response=await fetch("/api/auth/worker-register",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:values.name,email:values.email,password:values.password})});
+    const response=await fetch("/api/auth/register",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:values.name,email:values.email,password:values.password,account_type:"worker"})});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.error||"Registration failed.");
     form.reset();message.style.color="#176b47";message.textContent=data.message||"Registration submitted. Wait for admin verification.";

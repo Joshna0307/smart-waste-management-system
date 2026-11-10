@@ -89,7 +89,7 @@ export default async function handler(req,res) {
           locationId=validId(body.location_id);category=String(body.waste_category||"");
           const rawQuantity=String(body.quantity_kg??"").trim();quantity=Number(rawQuantity);
           const categories=["biodegradable","recyclable","reusable","craft","residual","e_waste"];
-          if(!locationId||!categories.includes(category)||!/^[0-9]+(?:\\.[0-9]{1,2})?$/.test(rawQuantity)||!Number.isFinite(quantity)||quantity<=0||quantity>100000){
+          if(!locationId||!categories.includes(category)||!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(rawQuantity)||!Number.isFinite(quantity)||quantity<=0||quantity>100000){
             await client.query("ROLLBACK");return send(res,400,{error:"Choose a campus location and waste category, and enter a quantity greater than 0 kg."});
           }
           const location=await client.query("SELECT id FROM campus_locations WHERE id=$1",[locationId]);

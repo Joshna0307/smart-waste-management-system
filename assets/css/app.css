@@ -27,3 +27,12 @@
 
 /* JOY University brand identity */
 .brand-lockup{display:flex;align-items:center;gap:13px}.brand-lockup img{width:48px;height:48px;object-fit:contain;background:#fff;border-radius:8px;padding:3px}.brand-lockup span{font-size:10px;letter-spacing:1.5px;color:#d7e8dc}.auth-university-logo{display:block;width:min(250px,80%);height:auto;margin:0 auto 18px}
+
+
+/* Worker assignment and proof review */
+.request-admin-tools{display:grid;gap:7px;min-width:190px}
+.request-admin-tools select,.request-admin-tools input{min-width:180px;margin:0;padding:8px;font-size:12px}
+.request-admin-tools button{border:0;border-radius:8px;padding:9px 11px;background:#176b47;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+.request-admin-tools button:disabled{opacity:.55;cursor:wait}
+.request-admin-tools .request-mark-collected{background:#245f3e}
+.request-admin-tools .proof-link{font-size:12px;font-weight:700;color:#176b47;padding:4px 0}

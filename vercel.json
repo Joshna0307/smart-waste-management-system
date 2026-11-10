@@ -48,6 +48,14 @@
       "destination": "/admin-login.html"
     },
     {
+      "source": "/worker-login",
+      "destination": "/worker-login.html"
+    },
+    {
+      "source": "/worker",
+      "destination": "/worker.html"
+    },
+    {
       "source": "/",
       "destination": "/index.html"
     }

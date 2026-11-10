@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s);const auth=$("#auth"),app=$("#app"),msg=$("#authMsg");
 async function api(url,options={}){const r=await fetch(url,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})},credentials:"same-origin"});const data=await r.json().catch(()=>({error:"Unexpected server response"}));if(!r.ok)throw new Error(data.error||"Request failed");return data}
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));$("#loginForm").classList.toggle("hidden",b.dataset.tab!=="login");$("#registerForm").classList.toggle("hidden",b.dataset.tab!=="register");msg.textContent=""}));
-let currentUser=null;async function enter(user){currentUser=user;auth.classList.add("hidden");app.classList.remove("hidden");$("#logout").classList.remove("hidden");$("#welcomeText").textContent="Welcome, "+user.name+" · "+user.role;$("#adminModule").classList.toggle("hidden",user.role!=="admin");document.querySelectorAll(".user-only").forEach(el=>el.classList.toggle("hidden",user.role==="admin"));await loadDashboard()}
+let currentUser=null;async function enter(user){if(user?.role==="worker"){location.replace("/worker");return}currentUser=user;auth.classList.add("hidden");app.classList.remove("hidden");$("#logout").classList.remove("hidden");$("#welcomeText").textContent="Welcome, "+user.name+" · "+user.role;$("#adminModule").classList.toggle("hidden",user.role!=="admin");document.querySelectorAll(".user-only").forEach(el=>el.classList.toggle("hidden",user.role==="admin"));await loadDashboard()}
 $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Signing in…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/login",{method:"POST",body:JSON.stringify(data)});if(r.user?.role==="admin"){await api("/api/auth/logout",{method:"POST"});throw new Error("Admin accounts must sign in from the separate Admin login page.")}await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Creating account…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/register",{method:"POST",body:JSON.stringify(data)});await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#logout").addEventListener("click",async()=>{await api("/api/auth/logout",{method:"POST"});location.reload()});
@@ -60,10 +60,28 @@ async function loadCollections(){
     const to=String(event.to_status||"").replace(/_/g," ");
     return '<li><b>'+escapeHtml(from)+' → '+escapeHtml(to)+'</b><small>'+escapeHtml(new Date(event.created_at).toLocaleString())+' · '+escapeHtml(event.changed_by_name||"System")+'</small>'+(event.note?'<p>'+escapeHtml(event.note)+'</p>':'')+'</li>';
    }).join("")+'</ol></details>':'<span class="muted">No history</span>';
-   const options=r.status==="approved"?["approved",...baseOptions]:baseOptions;
-   const action=currentUser&&currentUser.role==="admin"?'<select class="request-status" data-current="'+escapeHtml(r.status)+'">'+options.map(s=>'<option value="'+s+'" '+(s===r.status?"selected":"")+'>'+s.replace(/_/g," ")+'</option>').join("")+'</select><input class="request-admin-note" placeholder="Admin note"><button type="button" class="request-update" data-id="'+r.id+'">Save</button>':'—';
+   const action=currentUser&&currentUser.role==="admin"?'<div class="request-admin-tools">'+
+    '<select class="worker-assign-select" aria-label="Assign worker"><option value="">Unassigned</option>'+(data.workers||[]).map(w=>'<option value="'+w.id+'" '+(String(w.id)===String(r.assigned_worker_id)?"selected":"")+'>'+escapeHtml(w.name)+' · '+escapeHtml(w.email)+'</option>').join("")+'</select>'+
+    '<button type="button" class="worker-assign-save" data-id="'+r.id+'">Save assignment</button>'+
+    (r.worker_name?'<small class="muted">Assigned to '+escapeHtml(r.worker_name)+'</small>':'')+
+    (r.has_proof?'<a class="proof-link" href="/api/worker-proof?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">Review worker photo</a>':'<small class="muted">No photo proof submitted</small>')+
+    (r.status==="proof_submitted"?'<button type="button" class="request-mark-collected" data-id="'+r.id+'">Approve · Mark Collected</button>':'')+
+    (["pending","approved","assigned"].includes(r.status)?'<select class="request-status" data-current="'+escapeHtml(r.status)+'"><option value="pending">Pending</option><option value="rejected">Rejected</option></select><input class="request-admin-note" placeholder="Admin note"><button type="button" class="request-update" data-id="'+r.id+'">Save status</button>':'')+
+    '</div>':'—';
    return '<tr><td>Request #'+r.id+'<small>'+escapeHtml(r.location_name||"Campus location")+'</small></td><td>'+escapeHtml(r.waste_category)+(r.notes?'<small class="request-note">'+escapeHtml(r.notes)+'</small>':'')+'</td><td>'+Number(r.quantity_kg).toFixed(2)+' kg</td><td><span class="request-pill '+escapeHtml(r.status)+'">'+escapeHtml(r.status.replace(/_/g," "))+'</span></td><td>'+new Date(r.created_at).toLocaleString()+'</td><td>'+history+'</td><td>'+action+'</td></tr>';
   }).join("");
+  body.querySelectorAll(".worker-assign-save").forEach(button=>button.addEventListener("click",async()=>{
+   const row=button.closest("tr"),select=row.querySelector(".worker-assign-select");
+   button.disabled=true;$("#collectionMsg").textContent="Saving worker assignment…";
+   try{await api("/api/collections",{method:"PATCH",body:JSON.stringify({id:button.dataset.id,assigned_worker_id:select.value||null})});$("#collectionMsg").textContent="Worker assignment saved.";await loadCollections()}
+   catch(error){$("#collectionMsg").textContent=error.message;button.disabled=false}
+  }));
+  body.querySelectorAll(".request-mark-collected").forEach(button=>button.addEventListener("click",async()=>{
+   if(!confirm("Confirm that the worker's photo proof is acceptable and mark this request Collected?"))return;
+   button.disabled=true;$("#collectionMsg").textContent="Approving collection proof…";
+   try{await api("/api/collections",{method:"PATCH",body:JSON.stringify({id:button.dataset.id,status:"collected",admin_note:"Photo proof reviewed and approved by administrator."})});$("#collectionMsg").textContent="Collection approved and marked Collected.";await loadCollections()}
+   catch(error){$("#collectionMsg").textContent=error.message;button.disabled=false}
+  }));
   body.querySelectorAll(".request-update").forEach(button=>button.addEventListener("click",async()=>{
    const row=button.closest("tr"),select=row.querySelector(".request-status"),note=row.querySelector(".request-admin-note"),previous=select.dataset.current;
    button.disabled=true;select.disabled=true;note.disabled=true;$("#collectionMsg").textContent="Updating request…";

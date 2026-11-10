@@ -4,7 +4,7 @@ import { db, send } from "./db.js";
 async function getUser(req){
  const token=(req.headers.cookie||"").split(";").map(x=>x.trim()).find(x=>x.startsWith("joy_session="))?.slice(12);
  if(!token||!process.env.JWT_SECRET)return null;
- try{const p=jwt.verify(token,process.env.JWT_SECRET);if(!p?.id)return null;const q=await db().query("SELECT id,name,email,role FROM users WHERE id=$1",[p.id]);return q.rows[0]||null}catch{return null}
+ try{const p=jwt.verify(token,process.env.JWT_SECRET);if(!p?.id)return null;const q=await db().query("SELECT id,name,email,role,worker_verified FROM users WHERE id=$1",[p.id]);return q.rows[0]||null}catch{return null}
 }
 function validId(v){const s=String(v??"").trim();return /^[1-9][0-9]{0,17}$/.test(s)?s:null}
 export default async function handler(req,res){
@@ -26,6 +26,7 @@ export default async function handler(req,res){
   }
   if(req.method==="GET"){
    if(user.role!=="worker")return send(res,403,{error:"Worker access required."});
+   if(!user.worker_verified)return send(res,403,{error:"Your worker account is waiting for administrator verification."});
    const q=await db().query(`SELECT c.id,c.waste_category,c.quantity_kg,c.notes,c.status,c.created_at,c.assigned_at,c.proof_submitted_at,
     c.proof_image_name,l.location_name,l.location_code,COALESCE(u.name,'Campus user') AS requester_name
     FROM collection_requests c JOIN campus_locations l ON l.id=c.location_id
@@ -35,6 +36,7 @@ export default async function handler(req,res){
    return send(res,200,{worker:user,jobs:q.rows});
   }
   if(user.role!=="worker")return send(res,403,{error:"Worker access required."});
+  if(!user.worker_verified)return send(res,403,{error:"Your worker account is waiting for administrator verification."});
   const body=req.body||{},id=validId(body.id),image=body.proof_image_data,name=String(body.proof_image_name||"collection-proof.jpg").slice(0,255);
   if(!id||typeof image!=="string"||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)||image.length>1800000)
    return send(res,400,{error:"Upload a JPG, PNG or WEBP collection photo under 1.3 MB."});

@@ -27,23 +27,36 @@ export default async function handler(req,res){
     db().query(`SELECT w.id,w.waste_category,w.quantity_kg,w.collection_status,w.recorded_at,(w.image_data IS NOT NULL) AS has_image,
       l.location_name,COALESCE(u.name,'Former user') AS reporter_name FROM waste_records w
       JOIN campus_locations l ON l.id=w.location_id LEFT JOIN users u ON u.id=w.recorded_by ORDER BY w.recorded_at DESC,w.id DESC LIMIT 300`),
-    db().query("SELECT id,name,email,role,created_at FROM users ORDER BY created_at DESC LIMIT 500")
+    db().query("SELECT id,name,email,role,worker_verified,created_at FROM users ORDER BY created_at DESC LIMIT 500")
    ]);
    return send(res,200,{summary:summary.rows[0],categories:categories.rows,monthly:monthly.rows,records:records.rows,users:users.rows});
   }
-  const body=req.body||{},userId=validId(body.user_id),role=String(body.role||"");
-  if(!userId||!["user","admin","worker"].includes(role))return send(res,400,{error:"Choose a valid user, worker or administrator role."});
-  if(String(actor.id)===userId&&role!=="admin")return send(res,400,{error:"You cannot remove your own administrator access."});
+  const body=req.body||{},userId=validId(body.user_id);
+  if(!userId)return send(res,400,{error:"Choose a valid user account."});
+  const roleProvided=Object.prototype.hasOwnProperty.call(body,"role");
+  const verificationProvided=Object.prototype.hasOwnProperty.call(body,"worker_verified");
+  if(!roleProvided&&!verificationProvided)return send(res,400,{error:"Choose an account change."});
+  const role=String(body.role||"");
+  if(roleProvided&&!["user","admin","worker"].includes(role))return send(res,400,{error:"Choose a valid user, worker or administrator role."});
+  if(verificationProvided&&typeof body.worker_verified!=="boolean")return send(res,400,{error:"Worker verification must be true or false."});
+  if(String(actor.id)===userId&&roleProvided&&role!=="admin")return send(res,400,{error:"You cannot remove your own administrator access."});
   const client=await db().connect();
   try{
    await client.query("BEGIN");
-   const target=await client.query("SELECT id,role FROM users WHERE id=$1 FOR UPDATE",[userId]);
+   const target=await client.query("SELECT id,role,worker_verified FROM users WHERE id=$1 FOR UPDATE",[userId]);
    if(!target.rowCount){await client.query("ROLLBACK");return send(res,404,{error:"User account not found."})}
-   if(target.rows[0].role==="admin"&&role!=="admin"){
+   if(roleProvided&&target.rows[0].role==="admin"&&role!=="admin"){
     const count=await client.query("SELECT COUNT(*)::int AS count FROM users WHERE role='admin'");
     if(Number(count.rows[0].count)<=1){await client.query("ROLLBACK");return send(res,409,{error:"At least one administrator account must remain."})}
    }
-   const updated=await client.query("UPDATE users SET role=$1 WHERE id=$2 RETURNING id,name,email,role",[role,userId]);
+   let updated;
+   if(roleProvided){
+    const verified=role==="worker"&&target.rows[0].role==="worker"&&verificationProvided?body.worker_verified:false;
+    updated=await client.query("UPDATE users SET role=$1,worker_verified=$2 WHERE id=$3 RETURNING id,name,email,role,worker_verified",[role,verified,userId]);
+   }else{
+    if(target.rows[0].role!=="worker"){await client.query("ROLLBACK");return send(res,400,{error:"Only worker accounts can be verified."});}
+    updated=await client.query("UPDATE users SET worker_verified=$1 WHERE id=$2 RETURNING id,name,email,role,worker_verified",[body.worker_verified,userId]);
+   }
    await client.query("COMMIT");return send(res,200,{user:updated.rows[0]});
   }catch(error){await client.query("ROLLBACK");throw error}finally{client.release()}
  }catch(error){console.error("admin:",error);return send(res,500,{error:"Could not load or update administrator data."})}

@@ -1,0 +1,6 @@
+/* JOY University campus photo used on all authentication pages */
+:root{background:#e9f1ed}
+body.auth-page,body:has(#auth:not(.hidden)){background-color:#e9f1ed;background-image:linear-gradient(135deg,rgba(7,35,27,.28),rgba(13,53,40,.12)),url("data:image/jpeg;base64,REPLACE_BASE64");background-position:center;background-size:cover;background-repeat:no-repeat;background-attachment:fixed}
+body.auth-page .card,body:has(#auth:not(.hidden)) #auth{background:rgba(255,255,255,.94);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);box-shadow:0 18px 55px rgba(9,38,27,.22)}
+body.auth-page .top,body:has(#auth:not(.hidden)) .top{background:rgba(12,53,39,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+@media(max-width:600px){body.auth-page,body:has(#auth:not(.hidden)){background-position:center;background-attachment:scroll}}

@@ -17,7 +17,7 @@ export default async function handler(req,res){
    if(!/^[1-9][0-9]{0,17}$/.test(proofId))return send(res,400,{error:"Invalid request."});
    const proof=await db().query("SELECT proof_image_data,proof_image_name FROM collection_requests WHERE id=$1",[proofId]);
    if(!proof.rowCount||!proof.rows[0].proof_image_data)return send(res,404,{error:"Proof image not found."});
-   const match=proof.rows[0].proof_image_data.match(/^data:(image\\/(?:jpeg|png|webp));base64,(.+)$/);
+   const match=proof.rows[0].proof_image_data.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
    if(!match)return send(res,404,{error:"Proof image is invalid."});
    res.setHeader("Content-Type",match[1]);
    res.setHeader("Content-Disposition",'inline; filename="'+String(proof.rows[0].proof_image_name||"proof.jpg").replace(/["\\\\]/g,"")+'"');

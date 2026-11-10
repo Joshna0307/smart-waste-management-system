@@ -9,7 +9,7 @@ export default async function handler(req,res) {
     const cleanName=String(name||"").trim();
     const cleanEmail=String(email||"").trim().toLowerCase();
     const cleanPassword=String(password||"");
-    if(cleanName.length<2||cleanName.length>100||!/^\\S+@\\S+\\.\\S+$/.test(cleanEmail)||cleanEmail.length>254||cleanPassword.length<8||cleanPassword.length>72)
+    if(cleanName.length<2||cleanName.length>100||!/^\S+@\S+\.\S+$/.test(cleanEmail)||cleanEmail.length>254||cleanPassword.length<8||cleanPassword.length>72)
       return send(res,400,{error:"Enter your name, a valid email and a password of 8 to 72 characters."});
     const hash=await bcrypt.hash(cleanPassword,12);
     if(account_type==="worker") {

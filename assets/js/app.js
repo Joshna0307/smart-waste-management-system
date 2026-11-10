@@ -64,7 +64,7 @@ async function loadCollections(){
     '<select class="worker-assign-select" aria-label="Assign worker"><option value="">Unassigned</option>'+(data.workers||[]).map(w=>'<option value="'+w.id+'" '+(String(w.id)===String(r.assigned_worker_id)?"selected":"")+'>'+escapeHtml(w.name)+' · '+escapeHtml(w.email)+'</option>').join("")+'</select>'+
     '<button type="button" class="worker-assign-save" data-id="'+r.id+'">Save assignment</button>'+
     (r.worker_name?'<small class="muted">Assigned to '+escapeHtml(r.worker_name)+'</small>':'')+
-    (r.has_proof?'<a class="proof-link" href="/api/worker-proof?id='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">Review worker photo</a>':'<small class="muted">No photo proof submitted</small>')+
+    (r.has_proof?'<a class="proof-link" href="/api/worker?proof='+encodeURIComponent(r.id)+'" target="_blank" rel="noopener">Review worker photo</a>':'<small class="muted">No photo proof submitted</small>')+
     (r.status==="proof_submitted"?'<button type="button" class="request-mark-collected" data-id="'+r.id+'">Approve · Mark Collected</button>':'')+
     (["pending","approved","assigned"].includes(r.status)?'<select class="request-status" data-current="'+escapeHtml(r.status)+'"><option value="pending">Pending</option><option value="rejected">Rejected</option></select><input class="request-admin-note" placeholder="Admin note"><button type="button" class="request-update" data-id="'+r.id+'">Save status</button>':'')+
     '</div>':'—';

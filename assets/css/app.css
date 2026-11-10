@@ -36,3 +36,9 @@
 .request-admin-tools button:disabled{opacity:.55;cursor:wait}
 .request-admin-tools .request-mark-collected{background:#245f3e}
 .request-admin-tools .proof-link{font-size:12px;font-weight:700;color:#176b47;padding:4px 0}
+
+.worker-verified-label{display:inline-block;background:#e4f4e9;color:#176b47;padding:5px 9px;border-radius:20px;font-size:12px;font-weight:800;margin-right:6px}
+.worker-pending-label{display:inline-block;background:#fff2d9;color:#8a5b0a;padding:5px 9px;border-radius:20px;font-size:12px;font-weight:800;margin-right:6px}
+#adminUserRows .admin-worker-verify{margin:5px 0;padding:7px 10px;border:0;border-radius:7px;background:#176b47;color:#fff;font-weight:700;cursor:pointer}
+#adminUserRows .admin-worker-verify[data-verified="false"]{background:#9b4b36}
+#adminUserRows .admin-worker-verify:disabled{opacity:.55;cursor:wait}

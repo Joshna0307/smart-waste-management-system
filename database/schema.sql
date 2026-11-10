@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id BIGSERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL,
   email VARCHAR(150) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL,
-  role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
+  role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','worker')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS campus_locations (
@@ -28,20 +28,26 @@ CREATE TABLE IF NOT EXISTS collection_requests (
   waste_category VARCHAR(30) NOT NULL CHECK (waste_category IN ('biodegradable','recyclable','reusable','craft','residual','e_waste')),
   quantity_kg NUMERIC(10,2) NOT NULL CHECK (quantity_kg > 0),
   notes TEXT,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','assigned','in_progress','collected','stored','processed','transferred','rejected','approved')),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','assigned','proof_submitted','in_progress','collected','stored','processed','transferred','rejected')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  assigned_worker_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  assigned_at TIMESTAMPTZ,
+  proof_image_data TEXT,
+  proof_image_name VARCHAR(255),
+  proof_submitted_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS collection_request_events (
   id BIGSERIAL PRIMARY KEY,
   request_id BIGINT NOT NULL REFERENCES collection_requests(id) ON DELETE CASCADE,
   changed_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
-  from_status VARCHAR(20) CHECK (from_status IS NULL OR from_status IN ('pending','assigned','in_progress','collected','stored','processed','transferred','rejected','approved')),
-  to_status VARCHAR(20) NOT NULL CHECK (to_status IN ('pending','assigned','in_progress','collected','stored','processed','transferred','rejected','approved')),
+  from_status VARCHAR(20) CHECK (from_status IS NULL OR from_status IN ('pending','approved','assigned','proof_submitted','in_progress','collected','stored','processed','transferred','rejected')),
+  to_status VARCHAR(20) NOT NULL CHECK (to_status IN ('pending','approved','assigned','proof_submitted','in_progress','collected','stored','processed','transferred','rejected')),
   note VARCHAR(500),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_collection_requests_assigned_worker ON collection_requests(assigned_worker_id,status);
 CREATE INDEX IF NOT EXISTS idx_collection_requests_owner_created
   ON collection_requests(requested_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_collection_request_events_request_created

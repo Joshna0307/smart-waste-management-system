@@ -51,7 +51,7 @@ export default async function handler(req,res){
    }
    let updated;
    if(roleProvided){
-    const verified=role==="worker"&&target.rows[0].role==="worker"&&verificationProvided?body.worker_verified:false;
+    const verified=role==="worker"&&target.rows[0].role==="worker"?(verificationProvided?body.worker_verified:target.rows[0].worker_verified):false;
     updated=await client.query("UPDATE users SET role=$1,worker_verified=$2 WHERE id=$3 RETURNING id,name,email,role,worker_verified",[role,verified,userId]);
    }else{
     if(target.rows[0].role!=="worker"){await client.query("ROLLBACK");return send(res,400,{error:"Only worker accounts can be verified."});}

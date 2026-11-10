@@ -52,6 +52,10 @@
       "destination": "/worker-login.html"
     },
     {
+      "source": "/worker-register",
+      "destination": "/worker-register.html"
+    },
+    {
       "source": "/worker",
       "destination": "/worker.html"
     },

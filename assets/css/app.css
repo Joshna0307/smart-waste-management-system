@@ -76,3 +76,12 @@
 .admin-collection-panel td{vertical-align:top}
 .admin-collection-panel .request-admin-tools{min-width:190px}
 .admin-collection-panel .message{margin-top:10px}
+
+/* Separate admin pages and dedicated campus-location directory */
+.admin-module-nav{position:sticky;top:0;z-index:21;display:flex;gap:8px;overflow-x:auto;padding:12px 0 14px;margin:0 0 18px;background:#f2f6f2}
+.admin-module-nav button{flex:0 0 auto;border:1px solid #d8e5db;border-radius:10px;background:#fff;color:#315b45;padding:11px 15px;font:inherit;font-size:13px;font-weight:750;cursor:pointer;white-space:nowrap}
+.admin-module-nav button.active{background:#176b47;border-color:#176b47;color:#fff;box-shadow:0 5px 14px #176b4726}
+.admin-page{display:none;min-width:0}.admin-page.active{display:block;animation:userPageIn .18s ease-out}
+.admin-page>.card,.admin-page>.grid{width:100%;max-width:100%}
+.admin-page .tablecard{margin-top:0}
+@media(max-width:760px){.admin-module-nav{margin-left:-14px;margin-right:-14px;padding:10px 14px;background:#f2f6f2}.admin-module-nav button{padding:10px 13px;font-size:12px}}

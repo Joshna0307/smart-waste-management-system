@@ -308,7 +308,7 @@ function productCard(p){
 }
 async function loadGreenCampus(){
  try{
-  const d=await api("/api/green-campus");greenCampusData=d;
+  const d=await api("/api/waste?view=green-campus");greenCampusData=d;
   const impact=d.impact||{},total=Number(impact.total_kg||0),recycled=Number(impact.recycled_kg||0),co2=Number(impact.co2_saved_kg||0);
   const put=(id,value)=>{const el=$("#"+id);if(el)el.textContent=value};
   put("greenTotal",total.toFixed(2)+" kg");put("greenRecycled",recycled.toFixed(2)+" kg");put("greenCo2",co2.toFixed(2)+" kg");put("myGreenPoints",Number(d.points||0).toLocaleString("en-IN"));
@@ -349,7 +349,7 @@ $("#downloadAdminGreenReport")?.addEventListener("click",downloadGreenCsv);
 $("#craftProductForm")?.addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,button=form.querySelector("button[type=submit]"),msg=$("#craftProductMsg");
  const values=Object.fromEntries(new FormData(form));button.disabled=true;msg.textContent="Adding product…";
- try{await api("/api/green-campus",{method:"POST",body:JSON.stringify({...values,action:"add_product"})});form.reset();msg.textContent="Product added to the JOY marketplace.";await loadGreenCampus()}
+ try{await api("/api/waste",{method:"POST",body:JSON.stringify({...values,action:"add_product"})});form.reset();msg.textContent="Product added to the JOY marketplace.";await loadGreenCampus()}
  catch(error){msg.textContent=error.message}finally{button.disabled=false}
 });
 $("#craftSaleForm")?.addEventListener("submit",async e=>{

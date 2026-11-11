@@ -140,3 +140,54 @@ footer{padding:34px 16px}
  .admin-heading{display:block}
 }
 @media(max-width:420px){.stats,.admin-stats{grid-template-columns:1fr 1fr}.stat span{font-size:10px}}
+
+
+/* V3: clear workspace redesign with a desktop side rail */
+body{background:#f1f5f2}
+.top{height:84px;padding-inline:max(calc((100vw - 1420px)/2),26px);background:#102f26}
+.wrap{max-width:1420px;margin:28px auto 60px}
+#app{padding-left:248px}
+.welcome{display:flex;min-height:158px;align-items:center;justify-content:space-between;padding:28px 32px;margin:0 0 24px;border:0;border-radius:24px;color:#fff;background:linear-gradient(112deg,#123b2d 0%,#176a49 62%,#57a878 100%);box-shadow:0 20px 45px #153d2c25;position:relative;overflow:hidden}
+.welcome:after{content:"";position:absolute;width:280px;height:280px;right:8%;top:-145px;border:1px solid #ffffff28;border-radius:50%;box-shadow:0 0 0 28px #ffffff0c,0 0 0 58px #ffffff08}
+.welcome h1,.welcome .tag{color:#fff}.welcome .tag{opacity:.8}.welcome .muted{color:#d5e9dc}.welcome .status{position:relative;z-index:1;background:#ffffff18;color:#fff;border:1px solid #ffffff40}
+.user-module-nav,.admin-module-nav{position:fixed;z-index:50;left:max(calc((100vw - 1420px)/2),14px);top:108px;bottom:22px;width:218px;height:auto;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px;padding:18px 12px;border:1px solid #dce7df;border-radius:20px;background:#fff;box-shadow:0 18px 45px #183d2b14;overflow-y:auto}
+.user-module-nav:before,.admin-module-nav:before{content:"CAMPUS WORKSPACE";display:block;padding:5px 10px 14px;color:#87958b;font-size:10px;font-weight:900;letter-spacing:.16em}
+.user-module-nav button,.admin-module-nav button{width:100%;min-height:47px;display:flex;align-items:center;justify-content:flex-start;gap:10px;padding:12px 13px;border:0;border-radius:12px;text-align:left;font-size:13px;background:transparent;color:#53665b}
+.user-module-nav button:before,.admin-module-nav button:before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:3px;background:#a8b9ad;box-shadow:0 0 0 4px #eff4f0}
+.user-module-nav button.active,.admin-module-nav button.active{background:#143f30;color:#fff;box-shadow:0 8px 18px #143f3025}
+.user-module-nav button.active:before,.admin-module-nav button.active:before{background:#9be0b6;box-shadow:0 0 0 4px #ffffff20}
+.user-page,.admin-page{animation:workspaceIn .24s ease-out}
+@keyframes workspaceIn{from{opacity:.55;transform:translateY(8px)}to{opacity:1;transform:none}}
+.stats,.admin-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.stat{min-height:148px;padding:23px 24px;border:1px solid #e1eae3;border-radius:20px;background:#fff;box-shadow:0 12px 28px #183d2b09}
+.stat:before{width:38px;height:5px;margin-bottom:18px;background:#3c9b69}
+.stat:after{width:110px;height:110px;right:-26px;bottom:-40px;top:auto;background:#eaf5ed}
+.stat strong{font-size:35px;color:#163f2e}
+.card{padding:28px;border-radius:21px;box-shadow:0 12px 32px #183d2b08}
+.grid{gap:20px}
+.user-page>.card,.admin-page>.card{margin-bottom:20px}
+h1{font-size:clamp(30px,3vw,40px)}
+h2{font-size:21px}
+.tablewrap{border-radius:15px}
+.primary{min-height:48px}
+#adminModule .admin-heading{margin:4px 0 20px}
+#adminModule .admin-heading h2{font-size:26px}
+#adminModule .admin-stats .stat{min-height:135px}
+@media(max-width:900px){
+ #app{padding-left:0}
+ .user-module-nav,.admin-module-nav{position:sticky;left:auto;top:5px;bottom:auto;width:100%;height:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;margin-bottom:20px;padding:9px;border-radius:14px}
+ .user-module-nav:before,.admin-module-nav:before{display:none}
+ .user-module-nav button,.admin-module-nav button{width:auto;min-width:max-content;min-height:42px}
+ .stats,.admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .welcome{min-height:130px;padding:22px}
+}
+@media(max-width:520px){
+ .top{height:70px;padding-inline:14px}
+ .wrap{margin:18px auto 38px}
+ .welcome{display:block;border-radius:18px}
+ .welcome .status{display:inline-block;margin-top:12px}
+ .stats,.admin-stats{gap:10px}
+ .stat{min-height:120px;padding:15px}
+ .stat strong{font-size:26px}
+ .card{padding:18px}
+}

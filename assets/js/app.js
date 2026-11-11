@@ -320,8 +320,8 @@ async function loadGreenCampus(){
   renderBars($("#greenCategoryChart"),(d.categories||[]).map(x=>({...x,waste_category:String(x.waste_category).replace(/_/g," ")})),"waste_category","quantity_kg");
   renderBars($("#greenMonthlyChart"),d.monthly||[],"month_label","quantity_kg");
   const products=d.products||[];
-  if($("#greenProducts"))$("#greenProducts").innerHTML=products.length?products.map(productCard).join(""):'<p class="muted">No recycled craft products have been listed yet.</p>';
-  if($("#adminCraftProducts"))$("#adminCraftProducts").innerHTML=products.length?products.map(productCard).join(""):'<p class="muted">No products yet. Add the first recycled craft product above.</p>';
+  if($("#greenProducts"))$("#greenProducts").innerHTML=products.length?products.map(p=>productCard(p,false)).join(""):'<p class="muted">No recycled craft products have been listed yet.</p>';
+  if($("#adminCraftProducts"))$("#adminCraftProducts").innerHTML=products.length?products.map(p=>productCard(p,false)).join(""):'<p class="muted">No products yet. Add the first recycled craft product above.</p>';
   const select=$("#craftSaleProduct");
   if(select)select.innerHTML='<option value="">Choose product</option>'+products.filter(p=>Number(p.stock)>0).map(p=>'<option value="'+p.id+'">'+escapeHtml(p.product_name)+' · '+Number(p.stock)+' available</option>').join("");
   const profitRows=(d.sales_monthly||[]).map(x=>({...x,profit:Number(x.profit||0)}));

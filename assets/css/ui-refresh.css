@@ -237,3 +237,38 @@ input:focus,select:focus,textarea:focus{border-color:#6b70d8;box-shadow:0 0 0 4p
 .map-toggle.active{background:linear-gradient(120deg,#49338c,#087f78);border-color:transparent}
 footer{color:#777b98}
 @media(max-width:900px){.user-module-nav,.admin-module-nav{background:rgba(255,255,255,.97)}}
+
+
+/* JOY Green Campus feature surfaces */
+.green-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:18px 0}
+.green-heading h2{margin:3px 0 6px}
+.green-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:14px 0 18px}
+.green-stats .stat:nth-child(4n+1){background:linear-gradient(145deg,#fff,#edf8f0)}
+.green-stats .stat:nth-child(4n+2){background:linear-gradient(145deg,#fff,#eef6ff)}
+.green-stats .stat:nth-child(4n+3){background:linear-gradient(145deg,#fff,#fff5e9)}
+.green-stats .stat:nth-child(4n){background:linear-gradient(145deg,#fff,#f5efff)}
+.leaderboard{display:grid;gap:9px}
+.leader-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #e6eee8;border-radius:12px;background:#f8fbf8}
+.leader-rank{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;background:#e5f3e9;color:#176b47;font-weight:850;margin-right:10px}
+.leader-name{font-weight:750;color:#244633}
+.leader-points{font-weight:850;color:#176b47;white-space:nowrap}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:13px;margin-top:14px}
+.product-card{border:1px solid #e2ebe4;border-radius:15px;padding:15px;background:linear-gradient(145deg,#fff,#f7fbf8)}
+.product-card img{width:100%;height:135px;object-fit:cover;border-radius:10px;margin-bottom:10px}
+.product-card h3{font-size:16px;margin:4px 0}
+.product-card p{font-size:12px;line-height:1.5;color:#718078}
+.product-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-weight:800;color:#176b47}
+.qr-directory{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
+.qr-location{display:grid;justify-items:center;gap:7px;padding:12px;border:1px solid #e3ece5;border-radius:13px;background:#fff;text-align:center}
+.qr-location canvas{width:112px!important;height:112px!important;max-width:100%}
+.qr-location b{font-size:12px;color:#284a36}
+.qr-location small{font-size:10px;color:#718078}
+.qr-location .priority{font-size:10px}
+.qr-scanner{margin-top:16px}
+.qr-scanner video{width:100%;max-height:300px;min-height:150px;object-fit:cover;border-radius:12px;background:#182d23;display:none}
+.qr-scanner video.active{display:block}
+.qr-scanner .camera-actions{margin-top:10px}
+#downloadGreenReport,#downloadAdminGreenReport{white-space:nowrap}
+@media(max-width:800px){.green-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.green-heading{align-items:flex-start;flex-direction:column}}
+@media(max-width:480px){.green-stats{gap:8px}.green-stats .stat{padding:13px}.green-stats .stat strong{font-size:20px}.qr-directory{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media print{.user-module-nav,.admin-module-nav,.top,#downloadGreenReport,#downloadAdminGreenReport,.qr-scanner{display:none!important}.green-heading{margin-top:0}}

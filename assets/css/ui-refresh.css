@@ -1,0 +1,86 @@
+/* JOY University Smart Waste Management — unified UI refresh */
+:root{
+ --joy-forest:#123d30;--joy-green:#18734d;--joy-mint:#e8f3eb;--joy-ink:#172b25;
+ --joy-muted:#718078;--joy-line:#e2eae4;--joy-paper:#fff;--joy-bg:#f4f7f4;
+ --joy-orange:#df8b3c;--joy-shadow:0 14px 38px rgba(18,61,48,.075);
+ color-scheme:light;
+}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(ellipse at 10% 0%,#e5f0e8 0,transparent 34%),var(--joy-bg);color:var(--joy-ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:-.01em}
+.top{height:76px;background:linear-gradient(110deg,#0e3328,#174c38 68%,#1d5c42);box-shadow:0 4px 22px #0b2d221a;letter-spacing:.08em}
+.brand{letter-spacing:-.035em}
+.brand-lockup img{width:50px;height:50px;border-radius:13px;box-shadow:0 3px 12px #00000015}
+.wrap{max-width:1220px;margin:34px auto 56px}
+.auth{max-width:490px;margin:6vh auto}
+.card{background:rgba(255,255,255,.96);border:1px solid rgba(218,231,221,.9);border-radius:20px;padding:26px;box-shadow:var(--joy-shadow);transition:box-shadow .2s,border-color .2s}
+.card:hover{border-color:#d3e3d7;box-shadow:0 17px 42px rgba(18,61,48,.09)}
+h1,h2,h3{color:#183b2e;letter-spacing:-.035em}
+h1{font-size:clamp(27px,3vw,36px);line-height:1.13;font-weight:850}
+h2{font-size:20px;font-weight:800}
+.tag{letter-spacing:.15em;font-size:10px;color:#238154}
+.muted{color:var(--joy-muted)}
+.welcome{align-items:center;padding:6px 2px 18px;border-bottom:1px solid #e2ebe4}
+.welcome h1{margin:0 0 6px}
+.status{background:#e6f5eb;border:1px solid #d1ead9;color:#216b43;font-weight:750}
+.stats,.admin-stats{gap:14px}
+.stat{position:relative;overflow:hidden;background:linear-gradient(145deg,#fff,#f9fcf9);border:1px solid var(--joy-line);border-radius:17px;padding:21px;box-shadow:0 7px 22px #153e2b08}
+.stat:after{content:"";position:absolute;right:-22px;top:-28px;width:82px;height:82px;border-radius:50%;background:#eaf4ec;opacity:.85}
+.stat span{position:relative;z-index:1;color:#718078;font-weight:650}
+.stat strong{position:relative;z-index:1;color:#174c37;font-size:clamp(25px,3vw,32px);letter-spacing:-.04em}
+.grid{gap:18px}
+.primary,.admin-save-role{background:linear-gradient(135deg,#1b8054,#176b47);box-shadow:0 6px 14px #176b4720;transition:transform .16s,box-shadow .16s,filter .16s}
+.primary:hover,.admin-save-role:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 9px 18px #176b4730}
+button,.ghost,.map-toggle{transition:background .16s,border-color .16s,color .16s,transform .16s}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #a6d9b7;outline-offset:2px}
+input,select,textarea{border:1px solid #d9e5dc;border-radius:11px;background:#fff;min-height:44px;color:#20382d;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:0;border-color:#65a982;box-shadow:0 0 0 4px #dff0e5}
+label{color:#365044;font-weight:700}
+.tabs{padding:5px;background:#f0f5f1;border-radius:13px}
+.tabs button{flex:1;border-radius:10px;font-weight:750}
+.tabs button.active{background:#176b47;box-shadow:0 3px 9px #176b4720}
+.user-module-nav,.admin-module-nav{top:0;border:1px solid #e2ebe4;border-radius:0 0 16px 16px;padding:11px 12px;background:rgba(247,250,247,.94);backdrop-filter:blur(14px);box-shadow:0 8px 22px #173c2b0c}
+.user-module-nav button,.admin-module-nav button{border-radius:11px;padding:11px 15px;font-size:12px;border-color:#e1eae3;color:#42604f}
+.user-module-nav button:hover,.admin-module-nav button:hover{background:#eaf4ed;color:#17583a}
+.user-module-nav button.active,.admin-module-nav button.active{background:linear-gradient(135deg,#1b8054,#176b47);border-color:#176b47;box-shadow:0 5px 13px #176b4720;color:white}
+.user-page.active,.admin-page.active{animation:joyPageEnter .2s ease-out}
+@keyframes joyPageEnter{from{opacity:.6;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.tablecard{overflow:hidden}
+.tablewrap{border:1px solid #e8eee9;border-radius:13px;background:#fff}
+table{font-size:13px}
+th{background:#f4f8f5;color:#66796d;font-size:10px;letter-spacing:.09em;padding:14px}
+td{padding:14px;color:#31473a}
+tbody tr:hover{background:#f8fbf8}
+.loc{border:1px solid #e4ece5;background:linear-gradient(135deg,#f8fbf8,#f0f6f1);border-radius:12px;padding:14px;line-height:1.45}
+.loc b{color:#234b35;font-size:13px}
+.priority{display:inline-block;margin-top:4px;color:#a85e22}
+.map-card,.camera-card{border-radius:20px}
+.map-scroll{border-radius:16px;background:#f3f8f3}
+.campus-3d{border-radius:16px;box-shadow:inset 0 0 0 1px #ffffff80}
+.map-toggle{border-radius:10px;font-weight:750}
+.request-pill{font-weight:750}
+.message{font-weight:600}
+.admin-heading{align-items:center}
+.admin-badge{background:#e7f4eb;border:1px solid #d3e9d9}
+.admin-bar-track{height:11px;background:#edf3ee}
+.admin-bar-fill{background:linear-gradient(90deg,#55a879,#18734d)}
+.admin-module .tablecard{border-radius:18px}
+.request-admin-tools button{border-radius:9px;background:#176b47}
+.request-admin-tools button:hover{filter:brightness(1.07)}
+#logout{border:1px solid #ffffff40;border-radius:10px;padding:10px 16px;background:#ffffff12;color:#fff;font-weight:750}
+#logout:hover{background:#ffffff25}
+footer{color:#829087}
+a{color:#176b47}
+@media(max-width:760px){
+ .top{height:66px}.wrap{margin:20px auto 38px;padding:0 14px}
+ .card{padding:19px;border-radius:17px}
+ .welcome{padding-bottom:14px}
+ .user-module-nav,.admin-module-nav{border-radius:0 0 13px 13px}
+ .stats,.admin-stats{gap:10px}
+ .stat{padding:15px;border-radius:14px}
+ .stat strong{font-size:24px}
+ .grid{gap:13px}
+ .tablecard{padding:16px}
+ .tablewrap{border-radius:11px}
+ th,td{padding:11px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}

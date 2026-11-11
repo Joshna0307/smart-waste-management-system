@@ -61,7 +61,7 @@ export default async function handler(req,res) {
               AND c.status NOT IN ('collected','stored','processed','transferred','rejected'))
           ORDER BY w.recorded_at DESC,w.id DESC LIMIT 200
         `,[isAdmin,u.id]),
-        isAdmin ? db().query("SELECT id,name,email FROM users WHERE role='worker' ORDER BY name") : Promise.resolve({rows:[]})
+        isAdmin ? db().query("SELECT id,name,email FROM users WHERE role='worker' AND worker_verified=TRUE ORDER BY name") : Promise.resolve({rows:[]})
       ]);
       return send(res,200,{requests:requests.rows,available_records:availableRecords.rows,workers:workers.rows});
     }
@@ -116,8 +116,8 @@ export default async function handler(req,res) {
           const workerId=body.assigned_worker_id===null||body.assigned_worker_id===""?null:validId(body.assigned_worker_id);
           if(body.assigned_worker_id!==null&&body.assigned_worker_id!==""&&!workerId){await client.query("ROLLBACK");return send(res,400,{error:"Choose a valid worker."});}
           if(workerId){
-            const worker=await client.query("SELECT id FROM users WHERE id=$1 AND role='worker'",[workerId]);
-            if(!worker.rowCount){await client.query("ROLLBACK");return send(res,400,{error:"That account is not an active worker."});}
+            const worker=await client.query("SELECT id FROM users WHERE id=$1 AND role='worker' AND worker_verified=TRUE",[workerId]);
+            if(!worker.rowCount){await client.query("ROLLBACK");return send(res,400,{error:"That worker account is not approved yet. Verify the worker in Admin → Users first."});}
           }
           if(["proof_submitted","collected","stored","processed","transferred","rejected"].includes(previous)){
             await client.query("ROLLBACK");return send(res,409,{error:"This request can no longer be reassigned."});

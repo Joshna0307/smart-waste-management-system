@@ -355,7 +355,7 @@ $("#craftProductForm")?.addEventListener("submit",async e=>{
 $("#craftSaleForm")?.addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,button=form.querySelector("button[type=submit]"),msg=$("#craftSaleMsg");
  const values=Object.fromEntries(new FormData(form));button.disabled=true;msg.textContent="Saving sale…";
- try{await api("/api/green-campus",{method:"POST",body:JSON.stringify({...values,action:"record_sale"})});form.reset();msg.textContent="Sale recorded and product stock updated.";await loadGreenCampus()}
+ try{await api("/api/waste",{method:"POST",body:JSON.stringify({...values,action:"record_sale"})});form.reset();msg.textContent="Sale recorded and product stock updated.";await loadGreenCampus()}
  catch(error){msg.textContent=error.message}finally{button.disabled=false}
 });
 let campusLocationsForQr=[];

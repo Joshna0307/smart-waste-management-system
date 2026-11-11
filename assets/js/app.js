@@ -280,7 +280,7 @@ function showUserPage(page){
  nav.classList.remove("hidden");
  nav.querySelectorAll("[data-user-page]").forEach(button=>button.classList.toggle("active",button.dataset.userPage===page));
  document.querySelectorAll("[data-user-page-panel]").forEach(panel=>panel.classList.toggle("active",panel.dataset.userPagePanel===page));
- if(page==="green")loadGreenCampus();
+ if(page==="green")loadGreenCampus(); if(page==="marketplace")loadCraftShop();
 }
 $("#userModuleNav")?.addEventListener("click",event=>{
  const button=event.target.closest("[data-user-page]");
@@ -291,7 +291,7 @@ $("#userModuleNav")?.addEventListener("click",event=>{
 
 
 // Admin module page navigation.
-function showAdminPage(page){const nav=$("#adminModuleNav");if(!nav)return;nav.classList.remove("hidden");nav.querySelectorAll("[data-admin-page]").forEach(button=>button.classList.toggle("active",button.dataset.adminPage===page));document.querySelectorAll("[data-admin-page-panel]").forEach(panel=>panel.classList.toggle("active",panel.dataset.adminPagePanel===page));if(page==="sustainability")loadGreenCampus();}
+function showAdminPage(page){const nav=$("#adminModuleNav");if(!nav)return;nav.classList.remove("hidden");nav.querySelectorAll("[data-admin-page]").forEach(button=>button.classList.toggle("active",button.dataset.adminPage===page));document.querySelectorAll("[data-admin-page-panel]").forEach(panel=>panel.classList.toggle("active",panel.dataset.adminPagePanel===page));if(page==="sustainability"){loadGreenCampus();loadAdminCraftOrders();}}
 $("#adminModuleNav")?.addEventListener("click",event=>{const button=event.target.closest("[data-admin-page]");if(!button)return;showAdminPage(button.dataset.adminPage);});
 
 
@@ -302,9 +302,10 @@ function renderBars(host,rows,labelKey,valueKey,suffix=" kg"){
  const list=rows||[],max=Math.max(1,...list.map(x=>Number(x[valueKey]||0)));
  host.innerHTML=list.length?list.map(x=>'<div class="admin-bar-row"><span>'+escapeHtml(x[labelKey])+'</span><div class="admin-bar-track"><div class="admin-bar-fill" style="width:'+Math.max(1,Number(x[valueKey]||0)/max*100)+'%"></div></div><b class="admin-bar-value">'+Number(x[valueKey]||0).toFixed(1)+suffix+'</b></div>').join(""):'<p class="muted">No data recorded yet.</p>';
 }
-function productCard(p){
- const image=typeof p.image_url==="string"&&/^https:\/\//i.test(p.image_url)?'<img loading="lazy" src="'+escapeHtml(p.image_url)+'" alt="'+escapeHtml(p.product_name)+'">':"";
- return '<article class="product-card">'+image+'<h3>'+escapeHtml(p.product_name)+'</h3><p>'+escapeHtml(p.description||"Made from reusable campus materials.")+'</p><p><b>Material:</b> '+escapeHtml(p.material_used)+'</p><div class="product-meta"><span>₹'+Number(p.price).toFixed(2)+'</span><span>'+Number(p.stock)+' available</span></div></article>';
+function productCard(p,canBuy=false){
+ const image=typeof p.image_url==='string'&&/^https:\/\//i.test(p.image_url)?'<img loading="lazy" src="'+escapeHtml(p.image_url)+'" alt="'+escapeHtml(p.product_name)+'">':'';
+ const buy=canBuy&&Number(p.stock)>0?'<div class="purchase-controls"><label>Quantity<input type="number" min="1" max="'+Number(p.stock)+'" value="1" data-buy-qty="'+p.id+'"></label><label>Payment<select data-buy-method="'+p.id+'"><option value="upi">UPI (Demo)</option><option value="card">Debit / Credit Card (Demo)</option><option value="net_banking">Net Banking (Demo)</option><option value="cash_on_pickup">Cash on Pickup</option></select></label><button type="button" class="primary" data-buy-product="'+p.id+'">Place order</button></div>':'';
+ return '<article class="product-card">'+image+'<h3>'+escapeHtml(p.product_name)+'</h3><p>'+escapeHtml(p.description||'Made from reusable campus materials.')+'</p><p><b>Material:</b> '+escapeHtml(p.material_used)+'</p><div class="product-meta"><span>₹'+Number(p.price).toFixed(2)+'</span><span>'+Number(p.stock)+' available</span></div>'+buy+'</article>';
 }
 async function loadGreenCampus(){
  try{
@@ -329,6 +330,18 @@ async function loadGreenCampus(){
   ["greenLeaderboard","greenProducts","adminCraftProducts"].forEach(id=>{const el=$("#"+id);if(el)el.innerHTML='<p class="message">'+escapeHtml(error.message)+'</p>'});
  }
 }
+async function loadCraftShop(){
+ const host=$("#buyCraftProducts"),orders=$("#myCraftOrders");
+ try{const d=await api("/api/waste?view=green-campus"),products=d.products||[];if(host)host.innerHTML=products.length?products.map(p=>productCard(p,true)).join(""):"<p class='muted'>No crafts available.</p>";
+ const od=await api("/api/waste?view=craft-orders");if(orders)orders.innerHTML=od.orders?.length?od.orders.map(o=>"<article class='order-row'><b>Order #"+o.id+" · "+escapeHtml(o.product_name)+"</b><p>Qty: "+Number(o.quantity)+" · Total: ₹"+Number(o.total_amount).toFixed(2)+"</p><small>"+escapeHtml(o.payment_method)+" · "+escapeHtml(o.status)+"</small></article>").join(""):"<p class='muted'>No orders yet.</p>";
+ }catch(error){if(host)host.textContent=error.message;}
+}
+async function loadAdminCraftOrders(){
+ const host=$("#adminCraftOrders");if(!host)return;
+ try{const d=await api("/api/waste?view=craft-orders");host.innerHTML=d.orders?.length?d.orders.map(o=>"<article class='order-row'><div><b>Order #"+o.id+" · "+escapeHtml(o.product_name)+"</b><p>Student: "+escapeHtml(o.student_name)+" · Qty: "+o.quantity+" · ₹"+Number(o.total_amount).toFixed(2)+"</p><small>"+escapeHtml(o.payment_method)+" · "+escapeHtml(o.payment_status)+"</small></div><label>Status<select data-order-status='"+o.id+"'>"+["pending","confirmed","ready","completed","cancelled"].map(v=>"<option value='"+v+"' "+(v===o.status?"selected":"")+">"+v+"</option>").join("")+"</select></label></article>").join(""):"<p class='muted'>No student orders yet.</p>";}catch(error){host.textContent=error.message;}
+}
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-buy-product]");if(!b)return;const id=b.dataset.buyProduct,quantity=Number(document.querySelector("[data-buy-qty='"+id+"']")?.value),payment_method=document.querySelector("[data-buy-method='"+id+"']")?.value;b.disabled=true;try{const r=await api("/api/waste",{method:"POST",body:JSON.stringify({action:"place_order",product_id:id,quantity,payment_method})});alert("Order #"+r.order.id+" placed. Remaining stock: "+r.remaining_stock+". Demo only; no payment collected.");await loadCraftShop();await loadGreenCampus();}catch(error){alert(error.message);}finally{b.disabled=false;}});
+document.addEventListener("change",async e=>{const sel=e.target.closest("[data-order-status]");if(!sel)return;sel.disabled=true;try{await api("/api/waste",{method:"POST",body:JSON.stringify({action:"update_order_status",order_id:sel.dataset.orderStatus,status:sel.value})});await loadAdminCraftOrders();}catch(error){alert(error.message);}finally{sel.disabled=false;}});
 function downloadGreenCsv(){
  if(!greenCampusData){alert("Please wait for the sustainability data to load.");return}
  const d=greenCampusData,rows=[

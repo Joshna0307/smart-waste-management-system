@@ -35,10 +35,40 @@ async function greenCampusData(user,res) {
  const stats=impact.rows[0],recycled=Number(stats.recycled_kg);
  return send(res,200,{impact:{...stats,recycled_kg:recycled,co2_saved_kg:Number((recycled*0.5).toFixed(2)),co2_factor_kg_per_kg:0.5},categories:categories.rows,monthly:monthly.rows,points:points.rows[0].points,leaderboard:leaderboard.rows,products:products.rows,sales:sales.rows[0],sales_monthly:salesMonthly.rows,campus:"JOY University"});
 }
+async function craftOrdersData(user,res) {
+ const admin=user.role==='admin';
+ const q=await db().query(`SELECT o.id,o.user_id,u.name AS student_name,o.product_id,p.product_name,o.quantity,o.unit_price,o.total_amount,o.payment_method,o.payment_status,o.status,o.created_at FROM craft_orders o JOIN users u ON u.id=o.user_id JOIN craft_products p ON p.id=o.product_id ${admin?'':'WHERE o.user_id=$1'} ORDER BY o.created_at DESC,o.id DESC LIMIT 200`,admin?[]:[user.id]);
+ return send(res,200,{orders:q.rows});
+}
+async function placeCraftOrder(body,user,res) {
+ const productId=validId(body.product_id),quantity=Number(body.quantity),method=String(body.payment_method||'');
+ if(!productId||!Number.isInteger(quantity)||quantity<1||quantity>100||!['upi','card','net_banking','cash_on_pickup'].includes(method))return send(res,400,{error:'Choose a valid product, quantity and payment method.'});
+ const client=await db().connect();
+ try {
+  await client.query('BEGIN');
+  const found=await client.query('SELECT id,product_name,price,stock FROM craft_products WHERE id=$1 FOR UPDATE',[productId]);
+  if(!found.rowCount){await client.query('ROLLBACK');return send(res,404,{error:'Craft product not found.'});}
+  const p=found.rows[0],stock=Number(p.stock),price=Number(p.price);
+  if(stock<quantity){await client.query('ROLLBACK');return send(res,409,{error:'Only '+stock+' item(s) are currently available.'});}
+  const total=Number((price*quantity).toFixed(2)),paymentStatus=method==='cash_on_pickup'?'pay_on_pickup':'demo_pending';
+  const order=await client.query("INSERT INTO craft_orders(user_id,product_id,quantity,unit_price,total_amount,payment_method,payment_status,status) VALUES($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING id,quantity,unit_price,total_amount,payment_method,payment_status,status,created_at",[user.id,p.id,quantity,price,total,method,paymentStatus]);
+  await client.query('UPDATE craft_products SET stock=stock-$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2',[quantity,p.id]);
+  await client.query('COMMIT');
+  return send(res,201,{order:order.rows[0],product_name:p.product_name,remaining_stock:stock-quantity});
+ }catch(error){await client.query('ROLLBACK');throw error}finally{client.release()}
+}
 async function greenCampusAction(body,user,res) {
+ if(body.action==="place_order"){if(user.role!=="user")return send(res,403,{error:"Student login is required."});return await placeCraftOrder(body,user,res);}
  if(user.role!=="admin")return send(res,403,{error:"Only JOY University administrators can manage the marketplace."});
  const clean=(v,max=160)=>typeof v==="string"?v.trim().slice(0,max):"";
  const valid=(v)=>/^[1-9][0-9]{0,17}$/.test(String(v??""))?String(v):null;
+ if(body.action==="update_order_status"){
+  const orderId=valid(body.order_id),status=clean(body.status,24);
+  if(!orderId||!["confirmed","ready","completed","cancelled"].includes(status))return send(res,400,{error:"Choose a valid order and status."});
+  const q=await db().query("UPDATE craft_orders SET status=$1 WHERE id=$2 RETURNING id,status",[status,orderId]);
+  if(!q.rowCount)return send(res,404,{error:"Order not found."});
+  return send(res,200,{order:q.rows[0]});
+ }
  if(body.action==="add_product"){
   const name=clean(body.product_name),material=clean(body.material_used),description=clean(body.description,1000),price=Number(body.price),stock=Number(body.stock),image=clean(body.image_url,1000);
   if(!name||!material||!Number.isFinite(price)||price<0||price>10000000||!Number.isInteger(stock)||stock<0||stock>1000000)return send(res,400,{error:"Enter a product name, material, valid price and whole-number stock."});
@@ -72,6 +102,7 @@ export default async function handler(req,res) {
   try {
     if(req.method==="GET") {
       if(req.query?.view==="green-campus") return await greenCampusData(u,res);
+      if(req.query?.view==="craft-orders") return await craftOrdersData(u,res);
       const result=await db().query(`
         SELECT w.id,w.waste_category,w.quantity_kg,w.collection_status,w.notes,w.recorded_at,
           (w.image_data IS NOT NULL) AS has_image,l.location_name
@@ -85,7 +116,7 @@ export default async function handler(req,res) {
     }
 
     const body=req.body||{};
-    if(body.action==="add_product"||body.action==="record_sale") return await greenCampusAction(body,u,res);
+    if(["add_product","record_sale","place_order","update_order_status"].includes(body.action)) return await greenCampusAction(body,u,res);
     const locationId=validId(body.location_id);
     const category=String(body.waste_category||"");
     const rawQuantity=body.quantity_kg==null||String(body.quantity_kg).trim()===""?"0":String(body.quantity_kg).trim();

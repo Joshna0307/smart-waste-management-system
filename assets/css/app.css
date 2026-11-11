@@ -67,3 +67,12 @@
  .user-page[data-user-page-panel="report"] .grid,.user-page[data-user-page-panel="requests"] .collection-grid{grid-template-columns:minmax(0,1fr)}
  .user-page[data-user-page-panel="report"] .camera-card video{max-height:280px}
 }
+
+/* Admin collection request review panel */
+.admin-collection-panel{margin:18px 0 20px;min-width:0}
+.admin-collection-panel .admin-heading{margin:0 0 14px}
+.admin-collection-panel .tablewrap{max-width:100%;overflow-x:auto}
+.admin-collection-panel table{min-width:900px}
+.admin-collection-panel td{vertical-align:top}
+.admin-collection-panel .request-admin-tools{min-width:190px}
+.admin-collection-panel .message{margin-top:10px}

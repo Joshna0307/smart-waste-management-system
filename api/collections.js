@@ -109,7 +109,7 @@ export default async function handler(req,res) {
       const client=await db().connect();
       try{
         await client.query("BEGIN");
-        const current=await client.query("SELECT id,status,waste_record_id,assigned_worker_id,proof_image_data,requested_by,waste_category,quantity_kg FROM collection_requests WHERE id=$1 FOR UPDATE",[requestId]);
+        const current=await client.query("SELECT id,status,waste_record_id,assigned_worker_id,proof_image_data FROM collection_requests WHERE id=$1 FOR UPDATE",[requestId]);
         if(!current.rowCount){await client.query("ROLLBACK");return send(res,404,{error:"Collection request not found."});}
         const row=current.rows[0],previous=row.status;
         if(Object.prototype.hasOwnProperty.call(body,"assigned_worker_id")){
@@ -142,10 +142,6 @@ export default async function handler(req,res) {
         if(previous===nextStatus){await client.query("COMMIT");return send(res,200,{request:{id:requestId,status:previous},unchanged:true});}
         const updated=await client.query("UPDATE collection_requests SET status=$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2 RETURNING id,status,updated_at",[nextStatus,requestId]);
         if(row.waste_record_id)await client.query("UPDATE waste_records SET collection_status=$1 WHERE id=$2",[recordStatusForRequest(nextStatus),row.waste_record_id]);
-        if(nextStatus==="collected" && ["recyclable","reusable","craft"].includes(row.waste_category) && row.requested_by){
-          const earned=10+Math.ceil(Number(row.quantity_kg)*5);
-          await client.query("INSERT INTO green_points(user_id,request_id,points,reason) VALUES($1,$2,$3,$4) ON CONFLICT (request_id) DO NOTHING",[row.requested_by,requestId,earned,"Verified recycling collection"]);
-        }
         await client.query("INSERT INTO collection_request_events(request_id,changed_by,from_status,to_status,note) VALUES($1,$2,$3,$4,$5)",[requestId,u.id,previous,nextStatus,note||null]);
         await client.query("COMMIT");return send(res,200,{request:updated.rows[0]});
       }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}

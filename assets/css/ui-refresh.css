@@ -191,3 +191,49 @@ h2{font-size:21px}
  .stat strong{font-size:26px}
  .card{padding:18px}
 }
+
+
+/* V4 — vibrant campus colour system (high-contrast, unmistakably new look) */
+:root{
+ --joy-forest:#173b32;--joy-green:#13865d;--joy-mint:#e8fbf2;--joy-bg:#f5f6ff;
+ --joy-line:#e6e7f1;--joy-shadow:0 16px 38px rgba(45,48,94,.09);
+}
+body{background:radial-gradient(ellipse at 0% 8%,#dff7f1 0,transparent 32%),radial-gradient(ellipse at 100% 15%,#fce8f2 0,transparent 30%),linear-gradient(135deg,#f5f6ff,#f4fbf7 58%,#fff7ed);color:#202a45}
+.top{background:linear-gradient(105deg,#31245f 0%,#245b83 52%,#087f70 100%);box-shadow:0 9px 28px #30245f35}
+.welcome{background:linear-gradient(115deg,#30235f 0%,#315e9b 48%,#079b83 100%);color:#fff;border:0;box-shadow:0 18px 42px #315e9b30}
+.welcome h1,.welcome .tag{color:#fff}.welcome .muted{color:#e4efff}.welcome .tag{background:#ffffff20;border-radius:30px;padding:7px 12px}
+.welcome .status{background:#ffffff20;color:#fff;border:1px solid #ffffff55}
+.user-module-nav,.admin-module-nav{border-color:#e2e4f2;background:rgba(255,255,255,.94);box-shadow:0 15px 36px #30245f16}
+.user-module-nav button.active,.admin-module-nav button.active{background:linear-gradient(120deg,#49338c,#246ba0 65%,#078875);border-color:transparent;box-shadow:0 7px 18px #49338c35}
+.user-module-nav button:before,.admin-module-nav button:before{background:#b4a8e7;box-shadow:0 0 0 4px #f0edff}
+.user-module-nav button.active:before,.admin-module-nav button.active:before{background:#a8ffe1;box-shadow:0 0 0 4px #ffffff24}
+.card{border-color:#e5e7f2;box-shadow:0 13px 36px rgba(45,48,94,.07)}
+.card:hover{border-color:#d4d4ed;box-shadow:0 20px 45px rgba(45,48,94,.12)}
+h1,h2,h3{color:#30265e}
+.tag{color:#087e75}
+.stats .stat:nth-child(1),.admin-stats .stat:nth-child(1){background:linear-gradient(145deg,#fff,#e9f3ff);border-color:#d8e8ff}
+.stats .stat:nth-child(2),.admin-stats .stat:nth-child(2){background:linear-gradient(145deg,#fff,#e5fbf2);border-color:#d2f1e2}
+.stats .stat:nth-child(3),.admin-stats .stat:nth-child(3){background:linear-gradient(145deg,#fff,#fff0e4);border-color:#ffe1c9}
+.stats .stat:nth-child(4),.admin-stats .stat:nth-child(4){background:linear-gradient(145deg,#fff,#f4eaff);border-color:#e9d8ff}
+.stats .stat:nth-child(5),.admin-stats .stat:nth-child(5){background:linear-gradient(145deg,#fff,#fff0f4);border-color:#f7d9e4}
+.stats .stat:nth-child(6),.admin-stats .stat:nth-child(6){background:linear-gradient(145deg,#fff,#e8f8fb);border-color:#d2edf2}
+.stat:before{background:linear-gradient(90deg,#4c65d8,#08a88c)}
+.stat:nth-child(2):before{background:linear-gradient(90deg,#08a875,#7bcf91)}
+.stat:nth-child(3):before{background:linear-gradient(90deg,#f09a45,#f6c66d)}
+.stat:nth-child(4):before{background:linear-gradient(90deg,#9362d5,#c49be9)}
+.stat:nth-child(5):before{background:linear-gradient(90deg,#df6c9b,#f3a6b9)}
+.stat:nth-child(6):before{background:linear-gradient(90deg,#2698b6,#7bd4df)}
+.stat strong{color:#30265e}
+.primary,.admin-save-role{background:linear-gradient(120deg,#49338c,#246ba0 65%,#078875);box-shadow:0 7px 17px #49338c30}
+.primary:hover,.admin-save-role:hover{filter:brightness(1.08);box-shadow:0 10px 22px #49338c40}
+input:focus,select:focus,textarea:focus{border-color:#6b70d8;box-shadow:0 0 0 4px #e8e8ff}
+.tabs{background:#f0effb}.tabs button.active{background:linear-gradient(120deg,#49338c,#246ba0);color:white}
+.loc{background:linear-gradient(135deg,#f0fbf7,#f1f1ff);border-color:#dce5f1}
+.admin-badge,.status{background:#e5faf2;border-color:#c9f0e0;color:#08785d}
+.admin-bar-fill{background:linear-gradient(90deg,#6752c8,#278ec0,#08a881)}
+.request-pill.approved,.request-pill.collected{background:#def8eb;color:#08734f}
+.request-pill.in_progress,.request-pill.assigned{background:#fff0d9;color:#9a5a10}
+.request-pill.rejected{background:#ffe8ed;color:#ad3858}
+.map-toggle.active{background:linear-gradient(120deg,#49338c,#087f78);border-color:transparent}
+footer{color:#777b98}
+@media(max-width:900px){.user-module-nav,.admin-module-nav{background:rgba(255,255,255,.97)}}

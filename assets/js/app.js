@@ -377,6 +377,7 @@ function selectScannedBin(code){
 }
 function applyBinQuery(locations){
  campusLocationsForQr=locations||[];
+ if(currentUser?.role==="admin")return;
  const code=new URLSearchParams(window.location.search).get("bin");
  if(!code)return;
  const match=campusLocationsForQr.find(l=>String(l.location_code).toLowerCase()===code.toLowerCase());

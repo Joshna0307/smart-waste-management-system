@@ -41,13 +41,13 @@ export default async function handler(req,res) {
     const body=req.body||{};
     const locationId=validId(body.location_id);
     const category=String(body.waste_category||"");
-    const rawQuantity=String(body.quantity_kg??"").trim();
+    const rawQuantity=body.quantity_kg==null||String(body.quantity_kg).trim()===""?"0":String(body.quantity_kg).trim();
     const quantity=Number(rawQuantity);
     const notes=body.notes==null ? null : (typeof body.notes==="string" ? body.notes.trim() : null);
     if(!locationId || !CATEGORIES.includes(category) || !/^[0-9]+(?:\.[0-9]{1,2})?$/.test(rawQuantity) ||
-      !Number.isFinite(quantity) || quantity<=0 || quantity>100000 ||
+      !Number.isFinite(quantity) || quantity<0 || quantity>100000 ||
       (body.notes!=null && typeof body.notes!=="string") || (notes&&notes.length>1000)) {
-      return send(res,400,{error:"Choose a location and waste category, enter 0.01–100000 kg (up to 2 decimals), and keep notes under 1000 characters."});
+      return send(res,400,{error:"Choose a location and waste category, and keep notes under 1000 characters."});
     }
     const location=await db().query("SELECT id FROM campus_locations WHERE id=$1",[locationId]);
     if(!location.rowCount) return send(res,400,{error:"That campus location does not exist."});

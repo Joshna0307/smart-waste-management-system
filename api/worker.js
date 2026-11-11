@@ -38,8 +38,8 @@ export default async function handler(req,res){
   if(user.role!=="worker")return send(res,403,{error:"Worker access required."});
   if(!user.worker_verified)return send(res,403,{error:"Your worker account is waiting for administrator verification."});
   const body=req.body||{},id=validId(body.id),image=body.proof_image_data,name=String(body.proof_image_name||"collection-proof.jpg").slice(0,255);
-  if(!id||typeof image!=="string"||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)||image.length>1800000)
-   return send(res,400,{error:"Upload a JPG, PNG or WEBP collection photo under 1.3 MB."});
+  if(!id||typeof image!=="string"||!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)||image.length>4200000)
+   return send(res,400,{error:"Upload a JPG, PNG or WEBP collection photo under 3 MB."});
   const client=await db().connect();
   try{
    await client.query("BEGIN");

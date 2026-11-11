@@ -42,3 +42,28 @@
 #adminUserRows .admin-worker-verify{margin:5px 0;padding:7px 10px;border:0;border-radius:7px;background:#176b47;color:#fff;font-weight:700;cursor:pointer}
 #adminUserRows .admin-worker-verify[data-verified="false"]{background:#9b4b36}
 #adminUserRows .admin-worker-verify:disabled{opacity:.55;cursor:wait}
+
+/* User module: responsive page navigation and consistent section alignment */
+.user-module-nav{position:sticky;top:0;z-index:20;display:flex;gap:8px;align-items:center;overflow-x:auto;padding:12px 0 14px;margin:0 0 18px;background:#f2f6f2}
+.user-module-nav button{flex:0 0 auto;border:1px solid #d8e5db;border-radius:10px;background:#fff;color:#315b45;padding:11px 16px;font:inherit;font-size:13px;font-weight:750;cursor:pointer;white-space:nowrap}
+.user-module-nav button.active{background:#176b47;border-color:#176b47;color:#fff;box-shadow:0 5px 14px #176b4726}
+.user-page{display:none;min-width:0}
+.user-page.active{display:block;animation:userPageIn .18s ease-out}
+.user-page>.card,.user-page>.grid,.user-page>.stats{width:100%;max-width:100%;margin-left:0;margin-right:0}
+.user-page .grid{align-items:stretch}
+.user-page .grid>.card{min-width:0;height:100%}
+.user-page .stats{margin-bottom:18px}
+.user-page[data-user-page-panel="report"] .grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.user-page[data-user-page-panel="report"] .camera-card{margin:0;min-width:0}
+.user-page[data-user-page-panel="report"] .grid>.card{margin:0}
+.user-page[data-user-page-panel="records"] .tablecard,.user-page[data-user-page-panel="requests"] .collection-grid{margin-top:0}
+.user-page[data-user-page-panel="requests"] .collection-grid{grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr);align-items:start}
+.user-page[data-user-page-panel="requests"] .collection-grid>.card{min-width:0}
+.user-page[data-user-page-panel="map"] .map-card{margin:0}
+@keyframes userPageIn{from{opacity:.65;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:760px){
+ .user-module-nav{top:0;margin-left:-14px;margin-right:-14px;padding:10px 14px;background:#f2f6f2}
+ .user-module-nav button{padding:10px 13px;font-size:12px}
+ .user-page[data-user-page-panel="report"] .grid,.user-page[data-user-page-panel="requests"] .collection-grid{grid-template-columns:minmax(0,1fr)}
+ .user-page[data-user-page-panel="report"] .camera-card video{max-height:280px}
+}

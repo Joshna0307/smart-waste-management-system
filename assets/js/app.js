@@ -1,7 +1,7 @@
 const $=s=>document.querySelector(s);const auth=$("#auth"),app=$("#app"),msg=$("#authMsg");
 async function api(url,options={}){const r=await fetch(url,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})},credentials:"same-origin"});const data=await r.json().catch(()=>({error:"Unexpected server response"}));if(!r.ok)throw new Error(data.error||"Request failed");return data}
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));$("#loginForm").classList.toggle("hidden",b.dataset.tab!=="login");$("#registerForm").classList.toggle("hidden",b.dataset.tab!=="register");msg.textContent=""}));
-let currentUser=null;async function enter(user){if(user?.role==="worker"){try{await api("/api/auth/logout",{method:"POST"})}catch{}currentUser=null;auth.classList.remove("hidden");app.classList.add("hidden");$("#logout").classList.add("hidden");msg.textContent="This is a worker account. Please use the separate Worker sign in page.";return}currentUser=user;auth.classList.add("hidden");app.classList.remove("hidden");$("#logout").classList.remove("hidden");$("#welcomeText").textContent="Welcome, "+user.name+" · "+user.role;$("#adminModule").classList.toggle("hidden",user.role!=="admin");document.querySelectorAll(".user-only").forEach(el=>el.classList.toggle("hidden",user.role==="admin"));await loadDashboard()}
+let currentUser=null;async function enter(user){if(user?.role==="worker"){try{await api("/api/auth/logout",{method:"POST"})}catch{}currentUser=null;auth.classList.remove("hidden");app.classList.add("hidden");$("#logout").classList.add("hidden");msg.textContent="This is a worker account. Please use the separate Worker sign in page.";return}currentUser=user;auth.classList.add("hidden");app.classList.remove("hidden");$("#logout").classList.remove("hidden");$("#welcomeText").textContent="Welcome, "+user.name+" · "+user.role;$("#adminModule").classList.toggle("hidden",user.role!=="admin");document.querySelectorAll(".user-only").forEach(el=>el.classList.toggle("hidden",user.role==="admin"));if(user.role!=="admin")showUserPage("dashboard");await loadDashboard()}
 $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Signing in…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/login",{method:"POST",body:JSON.stringify(data)});if(r.user?.role==="admin"){await api("/api/auth/logout",{method:"POST"});throw new Error("Admin accounts must sign in from the separate Admin login page.")}await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();msg.textContent="Creating account…";try{const data=Object.fromEntries(new FormData(e.currentTarget));const r=await api("/api/auth/register",{method:"POST",body:JSON.stringify(data)});await enter(r.user)}catch(x){msg.textContent=x.message}});
 $("#logout").addEventListener("click",async()=>{await api("/api/auth/logout",{method:"POST"});location.reload()});
@@ -267,3 +267,19 @@ function selectMapLocation(loc){
  const select=$("#locations");if(select){select.value=String(loc.id);$("#mapMsg").textContent="Selected: "+loc.location_name+" · "+(loc.is_high_priority?"High priority collection point":"Campus collection point");}
  // Keep the map in view after a building is selected; do not jump down the page.
 }
+
+
+// User module page navigation. All original form IDs and API handlers stay intact.
+function showUserPage(page){
+ const nav=$("#userModuleNav");
+ if(!nav)return;
+ nav.classList.remove("hidden");
+ nav.querySelectorAll("[data-user-page]").forEach(button=>button.classList.toggle("active",button.dataset.userPage===page));
+ document.querySelectorAll("[data-user-page-panel]").forEach(panel=>panel.classList.toggle("active",panel.dataset.userPagePanel===page));
+}
+$("#userModuleNav")?.addEventListener("click",event=>{
+ const button=event.target.closest("[data-user-page]");
+ if(!button)return;
+ showUserPage(button.dataset.userPage);
+ if(button.dataset.userPage==="map"&&threeMap?.resize)threeMap.resize();
+});
